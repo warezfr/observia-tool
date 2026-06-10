@@ -1,10 +1,9 @@
 {
-  "framework": "vite",
+  "framework": "python",
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
   "routes": [
     { "handle": "filesystem" },
-    { "src": "/api/(.*)", "dest": "/api/index.py" }
-  ],
-  "excludeFiles": ["backend/**", "!**/api/**"]
+    { "src": "/api/(.*)", "dest": "/api/index" }
+  ]
 }
