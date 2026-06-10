@@ -110,11 +110,24 @@ class AnalysisRepository:
         )
         return result.scalar_one_or_none()
 
-    async def get_all(self, limit: int = 50) -> list[AnalysisDB]:
-        result = await self.db.execute(
-            select(AnalysisDB).order_by(AnalysisDB.created_at.desc()).limit(limit)
-        )
+    async def get_all(
+        self,
+        limit: int = 50,
+        status: str | None = None,
+        analysis_type: str | None = None,
+    ) -> list[AnalysisDB]:
+        query = select(AnalysisDB).order_by(AnalysisDB.created_at.desc()).limit(limit)
+        if status:
+            query = query.where(AnalysisDB.status == status)
+        if analysis_type:
+            query = query.where(AnalysisDB.analysis_type == analysis_type)
+        result = await self.db.execute(query)
         return list(result.scalars().all())
+
+    async def delete(self, analysis_id: int) -> bool:
+        result = await self.db.execute(delete(AnalysisDB).where(AnalysisDB.id == analysis_id))
+        await self.db.commit()
+        return result.rowcount > 0
 
     async def update_status(
         self,
@@ -137,3 +150,16 @@ class AnalysisRepository:
             update(AnalysisDB).where(AnalysisDB.id == analysis_id).values(**values)
         )
         await self.db.commit()
+
+
+class RecommendationRepository:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def delete_by_analysis_id(self, analysis_id: int) -> int:
+        """Delete all recommendations for a given analysis."""
+        result = await self.db.execute(
+            delete(RecommendationDB).where(RecommendationDB.analysis_id == analysis_id)
+        )
+        await self.db.commit()
+        return result.rowcount

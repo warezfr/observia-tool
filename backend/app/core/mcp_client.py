@@ -64,10 +64,13 @@ class MCPClient:
                 env={"DT_URL": self.url, "DT_TOKEN": self.token},
             )
 
-            read, write = await stdio_client(server_params).__aenter__()
+            # Use context manager to properly manage stdio streams lifecycle
+            stdio_cm = stdio_client(server_params)
+            read, write = await stdio_cm.__aenter__()
             session = ClientSession(read, write)
             await session.initialize()
             self._session = session
+            self._stdio_cm = stdio_cm  # Store for proper cleanup
             return {"status": "connected"}
         except ImportError as e:
             raise MCPConnectionError(f"MCP package not available: {e}")
@@ -100,9 +103,13 @@ class MCPClient:
         return [{"name": t.name, "description": t.description} for t in result.tools]
 
     async def disconnect(self) -> None:
-        """Close the MCP connection."""
+        """Close the MCP connection and cleanup resources."""
         async with self._lock:
             self._session = None
+            # Properly close the stdio context manager
+            if hasattr(self, '_stdio_cm') and self._stdio_cm is not None:
+                await self._stdio_cm.__aexit__(None, None, None)
+                self._stdio_cm = None
             # Remove from pool if present
             async with _pool_lock:
                 if self.url in _connection_pool:

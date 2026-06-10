@@ -32,3 +32,5 @@ htmlcov/
 .DS_Store
 *.log
 observia.db
+.vercel
+.env*

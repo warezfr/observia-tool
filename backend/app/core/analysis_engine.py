@@ -3,18 +3,19 @@ from app.core.agent_executor import AgentExecutor, AgentResult
 from app.core.ai_orchestrator import AIOrchestrator, AIProviderConfig, AIProviderType
 from app.core.mcp_client import MCPClient
 from app.core.recommendation_engine import RecommendationEngine
-from app.db.database import get_db, RecommendationDB
+from app.db.database import engine, RecommendationDB
 from app.db.repositories import EnvironmentRepository, AIProviderRepository, AnalysisRepository
 from app.models.analysis import AnalysisStatus
 from app.plugins import get_plugin
 from app.plugins.base import AnalysisContext
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
 
 async def run_analysis(analysis_id: int) -> None:
     """Execute a complete analysis workflow."""
-    async for db in get_db():
+    async with AsyncSession(engine) as db:
         env_repo = EnvironmentRepository(db)
         provider_repo = AIProviderRepository(db)
         analysis_repo = AnalysisRepository(db)

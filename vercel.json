@@ -1,0 +1,12 @@
+{
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "installCommand": "pip install -r requirements.txt",
+  "outputDirectory": "frontend/dist",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index" }
+  ],
+  "env": {
+    "DATABASE_URL": "sqlite+aiosqlite:///./data/observia.db",
+    "SECRET_KEY": "dev-secret-change-in-production"
+  }
+}

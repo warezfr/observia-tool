@@ -133,7 +133,7 @@ export default function Analyses() {
           <div key={analysis.id} className="bg-gray-900 border border-gray-800 rounded-lg p-4 flex items-center justify-between">
             <div className="cursor-pointer flex-1" onClick={() => navigate(`/analyses/${analysis.id}`)}>
               <div className="font-medium">{analysis.analysis_type.charAt(0).toUpperCase() + analysis.analysis_type.slice(1)} Analysis</div>
-              <div className="text-sm text-gray-400">Environment: {analysis.environment_id} | ID: {analysis.id}</div>
+              <div className="text-sm text-gray-400">Environment: {environments.find(e => e.id === analysis.environment_id)?.name || `ID ${analysis.environment_id}`} | ID: {analysis.id}</div>
               <div className="text-xs text-gray-500 mt-1">
                 {new Date(analysis.created_at).toLocaleString()}
                 {analysis.completed_at && ` → ${new Date(analysis.completed_at).toLocaleString()}`}
