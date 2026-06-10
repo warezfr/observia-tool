@@ -5,10 +5,10 @@ Exports the ASGI app for Vercel Python runtime.
 import os
 import sys
 
-# Add backend to path for imports
-backend_path = os.path.join(os.path.dirname(__file__), 'backend')
+# Add backend to path for imports (api is sibling of backend)
+backend_path = os.path.join(os.path.dirname(__file__), '..', 'backend')
 if backend_path not in sys.path:
-    sys.path.insert(0, backend_path)
+    sys.path.insert(0, os.path.abspath(backend_path))
 
 # Set environment variables for serverless
 os.environ.setdefault('DATABASE_URL', 'sqlite+aiosqlite:///./data/observia.db')
