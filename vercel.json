@@ -1,9 +1,4 @@
 {
-  "framework": "node",
-  "buildCommand": "cd frontend && npm install && npm run build",
-  "outputDirectory": "frontend/dist",
-  "routes": [
-    { "handle": "filesystem" },
-    { "src": "/api/(.*)", "dest": "/api/index" }
-  ]
+  "buildCommand": "npm install && npm run build",
+  "outputDirectory": "frontend/dist"
 }
