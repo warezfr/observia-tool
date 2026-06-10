@@ -8,6 +8,10 @@ import Environments from './pages/Environments';
 import AIProviders from './pages/AIProviders';
 import Analyses from './pages/Analyses';
 import AnalysisDetail from './pages/AnalysisDetail';
+import Reports from './pages/Reports';
+import Settings from './pages/Settings';
+import Automation from './pages/Automation';
+import Integrations from './pages/Integrations';
 
 export default function App() {
   return (
@@ -22,6 +26,10 @@ export default function App() {
                 <Route path="/ai-providers" element={<AIProviders />} />
                 <Route path="/analyses" element={<Analyses />} />
                 <Route path="/analyses/:id" element={<AnalysisDetail />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/automation" element={<Automation />} />
+                <Route path="/integrations" element={<Integrations />} />
               </Routes>
             </Layout>
           </BrowserRouter>
