@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-Content *)",
+      "Skill(claude-api)",
+      "PowerShell(if \\(Test-Path \"$env:APPDATA\\\\Claude\\\\claude_desktop_config.json\"\\) { Get-Content \"$env:APPDATA\\\\Claude\\\\claude_desktop_config.json\" -Raw } else { Write-Output \"FILE_NOT_FOUND\" })",
+      "Bash(git add *)",
+      "Bash(claude plugin *)",
+      "WebSearch",
+      "Bash(npm run *)",
+      "Bash(git commit -m ' *)",
+      "Bash(dir \"D:\\\\claude\\\\observia\\\\backend\")",
+      "Bash(python -m pytest tests/unit/test_cache.py -v)",
+      "Bash(pip install *)",
+      "Bash(python -m py_compile app/main.py app/api/v1/reports.py)",
+      "Bash(docker-compose up *)",
+      "Bash(docker compose *)",
+      "Bash(python -m uvicorn app.main:app --host 0.0.0.0 --port 8000)",
+      "Bash(python -c \"from app.main import app; print\\('Backend imports OK'\\)\")",
+      "Bash(Test-Path .env *)",
+      "PowerShell(git init *)",
+      "PowerShell(git config *)",
+      "PowerShell(git add *)"
+    ]
+  }
+}
