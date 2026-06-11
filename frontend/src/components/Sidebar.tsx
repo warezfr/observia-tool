@@ -4,10 +4,12 @@ import {
   Database,
   Bot,
   BarChart3,
+  FileText,
   Settings,
   Zap,
   Plug,
-  ChevronDown,
+  PanelLeftClose,
+  PanelLeftOpen,
   LogOut,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -24,11 +26,17 @@ const navItems: NavItem[] = [
   { icon: <Database size={20} />, label: 'Environments', to: '/environments', category: 'main' },
   { icon: <Bot size={20} />, label: 'AI Providers', to: '/ai-providers', category: 'main' },
   { icon: <BarChart3 size={20} />, label: 'Analyses', to: '/analyses', category: 'tools' },
-  { icon: <BarChart3 size={20} />, label: 'Reports', to: '/reports', category: 'tools' },
+  { icon: <FileText size={20} />, label: 'Reports', to: '/reports', category: 'tools' },
   { icon: <Zap size={20} />, label: 'Automation', to: '/automation', category: 'tools' },
   { icon: <Plug size={20} />, label: 'Integrations', to: '/integrations', category: 'system' },
   { icon: <Settings size={20} />, label: 'Settings', to: '/settings', category: 'system' },
 ];
+
+const categoryLabels: Record<NavItem['category'], string> = {
+  main: 'Main',
+  tools: 'Tools',
+  system: 'System',
+};
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -40,29 +48,35 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className={`bg-slate-900 border-r border-slate-800 flex flex-col transition-all duration-300 ${collapsed ? 'w-20' : 'w-56'}`}>
+    <aside
+      className={`bg-slate-950 border-r border-slate-800 flex flex-col transition-all duration-300 ${
+        collapsed ? 'w-20' : 'w-56'
+      }`}
+    >
       <div className="p-4 border-b border-slate-800">
         <div className="flex items-center justify-between">
           {!collapsed && (
-            <h1 className="text-lg font-bold bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent">
+            <h1 className="text-lg font-bold bg-gradient-to-r from-primary-400 to-secondary bg-clip-text text-transparent">
               Observia
             </h1>
           )}
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="p-1 hover:bg-slate-800 rounded transition-colors"
+            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            <ChevronDown size={18} className={`transform transition-transform ${collapsed ? '-rotate-90' : 'rotate-0'}`} />
+            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
           </button>
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto p-4 space-y-8">
+      <nav className="flex-1 overflow-y-auto p-3 space-y-6">
         {Object.entries(categories).map(([key, items]) => (
-          <div key={key} className="space-y-2">
+          <div key={key} className="space-y-1">
             {!collapsed && (
-              <p className="px-3 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                {key === 'main' ? 'Main' : key === 'tools' ? 'Tools' : 'System'}
+              <p className="px-3 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                {categoryLabels[key as NavItem['category']]}
               </p>
             )}
             <div className="space-y-1">
@@ -72,16 +86,23 @@ export default function Sidebar() {
                   to={item.to}
                   end={item.to === '/'}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2 rounded transition-all ${
+                    `relative flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${
                       isActive
-                        ? 'bg-primary-600 text-white shadow-lg'
+                        ? 'bg-primary-500/10 text-white'
                         : 'text-slate-400 hover:text-white hover:bg-slate-800'
                     }`
                   }
                   title={collapsed ? item.label : undefined}
                 >
-                  {item.icon}
-                  {!collapsed && <span className="text-sm">{item.label}</span>}
+                  {({ isActive }) => (
+                    <>
+                      {isActive && (
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r bg-primary-400" />
+                      )}
+                      {item.icon}
+                      {!collapsed && <span className="text-sm">{item.label}</span>}
+                    </>
+                  )}
                 </NavLink>
               ))}
             </div>
@@ -89,8 +110,11 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-slate-800">
-        <button className="w-full flex items-center gap-2 px-3 py-2 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+      <div className="p-3 border-t border-slate-800">
+        <button
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          title={collapsed ? 'Logout' : undefined}
+        >
           <LogOut size={20} />
           {!collapsed && <span className="text-sm">Logout</span>}
         </button>
