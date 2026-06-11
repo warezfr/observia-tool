@@ -30,14 +30,14 @@ import Badge from '../components/ui/Badge';
 import Skeleton from '../components/ui/Skeleton';
 import type { Analysis, AnalysisType, AnalysisStatus } from '../types';
 
+type ReactIcon = typeof Gauge;
+
 const typeIcon: Record<AnalysisType, ReactIcon> = {
   performance: Gauge,
   availability: Activity,
   security: ShieldCheck,
   cost: DollarSign,
 };
-
-type ReactIcon = typeof Gauge;
 
 const statusBadge: Record<AnalysisStatus, { variant: 'success' | 'error' | 'info' | 'warning'; pulse?: boolean }> = {
   completed: { variant: 'success' },
