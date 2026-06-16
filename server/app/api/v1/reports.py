@@ -1,3 +1,7 @@
+import html as html_lib
+import json
+import math
+import re
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -16,7 +20,7 @@ router = APIRouter()
 
 class ReportGenerateRequest(BaseModel):
     analysis_id: int
-    format: Literal["json", "markdown"]
+    format: Literal["json", "markdown", "html"]
     include_raw_data: bool = False
 
 
@@ -116,11 +120,332 @@ def generate_markdown_report(analysis: AnalysisDB, recommendations: list, includ
         lines.append("## Raw Results")
         lines.append("")
         lines.append("```json")
-        import json
         lines.append(json.dumps(analysis.result, indent=2))
         lines.append("```")
 
     return "\n".join(lines)
+
+
+# ----------------------------------------------------------------------------
+# HTML report (standalone, self-contained, print-friendly)
+# ----------------------------------------------------------------------------
+
+SEVERITY_ORDER = ["critical", "high", "medium", "low"]
+SEVERITY_COLORS = {
+    "critical": "#DC2626",
+    "high": "#EA580C",
+    "medium": "#D97706",
+    "low": "#16A34A",
+}
+
+
+def _render_markdown_to_html(text: str) -> str:
+    """Render markdown to HTML. Uses the `markdown` lib if available, else a
+    minimal, safe fallback (escapes input and preserves paragraphs/code)."""
+    if not text:
+        return ""
+    try:
+        import markdown as _md  # type: ignore
+
+        return _md.markdown(
+            text, extensions=["extra", "sane_lists", "nl2br", "tables", "fenced_code"]
+        )
+    except Exception:
+        # Minimal fallback: escape, keep fenced code blocks, split paragraphs.
+        escaped = html_lib.escape(text)
+
+        def _code_repl(m: "re.Match[str]") -> str:
+            return f"<pre><code>{m.group(1)}</code></pre>"
+
+        escaped = re.sub(r"```(.*?)```", _code_repl, escaped, flags=re.DOTALL)
+        blocks = [b.strip() for b in re.split(r"\n\s*\n", escaped) if b.strip()]
+        out = []
+        for b in blocks:
+            if b.startswith("<pre>"):
+                out.append(b)
+            else:
+                out.append("<p>" + b.replace("\n", "<br>") + "</p>")
+        return "\n".join(out)
+
+
+def _severity_counts(recommendations: list) -> dict:
+    counts = {s: 0 for s in SEVERITY_ORDER}
+    for rec in recommendations:
+        sev = (getattr(rec, "severity", "") or "").lower()
+        if sev in counts:
+            counts[sev] += 1
+    return counts
+
+
+def _severity_donut_svg(counts: dict) -> str:
+    """Build an inline SVG donut chart (no JS) from severity counts using
+    stroke-dasharray segments on concentric circles."""
+    total = sum(counts.values())
+    size = 180
+    cx = cy = size / 2
+    r = 64
+    stroke = 22
+    circumference = 2 * math.pi * r
+
+    if total == 0:
+        return (
+            f'<svg width="{size}" height="{size}" viewBox="0 0 {size} {size}" '
+            f'role="img" aria-label="No recommendations">'
+            f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="#E7E9EE" '
+            f'stroke-width="{stroke}"/>'
+            f'<text x="{cx}" y="{cy+5}" text-anchor="middle" font-size="14" '
+            f'fill="#6B7280">No data</text></svg>'
+        )
+
+    segments = []
+    offset = 0.0
+    for sev in SEVERITY_ORDER:
+        value = counts.get(sev, 0)
+        if value <= 0:
+            continue
+        seg_len = circumference * (value / total)
+        segments.append(
+            f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" '
+            f'stroke="{SEVERITY_COLORS[sev]}" stroke-width="{stroke}" '
+            f'stroke-dasharray="{seg_len:.3f} {circumference - seg_len:.3f}" '
+            f'stroke-dashoffset="{-offset:.3f}" transform="rotate(-90 {cx} {cy})"/>'
+        )
+        offset += seg_len
+
+    inner = "".join(segments)
+    return (
+        f'<svg width="{size}" height="{size}" viewBox="0 0 {size} {size}" '
+        f'role="img" aria-label="Severity distribution">'
+        f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="#F1F2F5" '
+        f'stroke-width="{stroke}"/>{inner}'
+        f'<text x="{cx}" y="{cy-2}" text-anchor="middle" font-size="30" '
+        f'font-weight="700" fill="#0B1020">{total}</text>'
+        f'<text x="{cx}" y="{cy+18}" text-anchor="middle" font-size="12" '
+        f'fill="#6B7280">findings</text></svg>'
+    )
+
+
+def _severity_bars_svg(counts: dict) -> str:
+    """Build a small inline SVG horizontal bar chart from severity counts."""
+    max_count = max(counts.values()) if counts else 0
+    rows = []
+    row_h = 28
+    bar_max = 220
+    label_w = 70
+    width = label_w + bar_max + 40
+    height = row_h * len(SEVERITY_ORDER) + 10
+    for i, sev in enumerate(SEVERITY_ORDER):
+        value = counts.get(sev, 0)
+        y = 10 + i * row_h
+        bar_w = (value / max_count * bar_max) if max_count else 0
+        rows.append(
+            f'<text x="0" y="{y+14}" font-size="12" fill="#475467" '
+            f'text-transform="capitalize">{sev}</text>'
+            f'<rect x="{label_w}" y="{y+2}" width="{bar_max}" height="16" rx="4" '
+            f'fill="#F1F2F5"/>'
+            f'<rect x="{label_w}" y="{y+2}" width="{bar_w:.2f}" height="16" rx="4" '
+            f'fill="{SEVERITY_COLORS[sev]}"/>'
+            f'<text x="{label_w + bar_max + 8}" y="{y+14}" font-size="12" '
+            f'fill="#0B1020">{value}</text>'
+        )
+    return (
+        f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
+        f'role="img" aria-label="Severity bars">{"".join(rows)}</svg>'
+    )
+
+
+def _severity_legend(counts: dict) -> str:
+    items = []
+    for sev in SEVERITY_ORDER:
+        items.append(
+            f'<span class="legend-item"><span class="legend-dot" '
+            f'style="background:{SEVERITY_COLORS[sev]}"></span>'
+            f'{sev.capitalize()} <strong>{counts.get(sev, 0)}</strong></span>'
+        )
+    return '<div class="legend">' + "".join(items) + "</div>"
+
+
+def generate_html_report(analysis, recommendations: list, include_raw_data: bool) -> str:
+    """Generate a complete, self-contained HTML report (inline CSS, no external
+    assets/JS, print-friendly). Includes a markdown-rendered summary,
+    recommendations with severity chips, and inline SVG charts."""
+    esc = html_lib.escape
+    a_type = esc(str(getattr(analysis, "analysis_type", "") or "analysis"))
+    a_status = esc(str(getattr(analysis, "status", "") or "unknown"))
+    created = getattr(analysis, "created_at", None)
+    completed = getattr(analysis, "completed_at", None)
+    created_s = created.isoformat() if created else "N/A"
+    completed_s = completed.isoformat() if completed else "In progress"
+
+    result = getattr(analysis, "result", None) or {}
+    summary_md = result.get("summary", "") if isinstance(result, dict) else ""
+    summary_html = _render_markdown_to_html(summary_md) if summary_md else (
+        '<p class="muted">No summary available.</p>'
+    )
+
+    counts = _severity_counts(recommendations)
+
+    # Recommendation cards
+    rec_blocks = []
+    if not recommendations:
+        rec_blocks.append('<p class="muted">No recommendations available.</p>')
+    for rec in recommendations:
+        sev = (getattr(rec, "severity", "") or "").lower()
+        color = SEVERITY_COLORS.get(sev, "#6B7280")
+        title = esc(str(getattr(rec, "title", "") or "Untitled"))
+        level = esc(str(getattr(rec, "level", "") or ""))
+        impact = esc(str(getattr(rec, "impact", "") or ""))
+        desc = _render_markdown_to_html(str(getattr(rec, "description", "") or ""))
+        action = getattr(rec, "action", None)
+        script = getattr(rec, "script", None)
+        script_type = getattr(rec, "script_type", None)
+
+        parts = [
+            '<div class="rec">',
+            '<div class="rec-head">',
+            f'<span class="chip" style="background:{color}1a;color:{color};'
+            f'border:1px solid {color}40">{esc(sev or "n/a")}</span>',
+            f'<span class="rec-title">{title}</span>',
+            "</div>",
+            '<div class="rec-meta">',
+            f'<span class="tag">{level}</span>' if level else "",
+            f'<span class="muted">{impact}</span>' if impact else "",
+            "</div>",
+            f'<div class="rec-desc">{desc}</div>',
+        ]
+        if action:
+            parts.append(
+                f'<div class="rec-section"><div class="rec-label">Action</div>'
+                f'<p>{esc(str(action))}</p></div>'
+            )
+        if script:
+            label = f"Script ({esc(str(script_type))})" if script_type else "Script"
+            parts.append(
+                f'<div class="rec-section"><div class="rec-label">{label}</div>'
+                f'<pre><code>{esc(str(script))}</code></pre></div>'
+            )
+        parts.append("</div>")
+        rec_blocks.append("".join(parts))
+
+    raw_block = ""
+    if include_raw_data and result:
+        raw_json = esc(json.dumps(result, indent=2, default=str))
+        raw_block = (
+            '<details class="raw"><summary>Raw data (JSON)</summary>'
+            f'<pre><code>{raw_json}</code></pre></details>'
+        )
+
+    donut = _severity_donut_svg(counts)
+    bars = _severity_bars_svg(counts)
+    legend = _severity_legend(counts)
+
+    total_recs = len(recommendations)
+    title = f"Observia Report — {a_type.capitalize()} Analysis #{getattr(analysis, 'id', '')}"
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{esc(title)}</title>
+<style>
+  :root {{
+    --app:#F6F7F9; --surface:#FFFFFF; --border:#E7E9EE; --fg:#0B1020;
+    --fg-secondary:#475467; --fg-muted:#6B7280; --accent:#4F46E5; --accent-soft:#EEF2FF;
+  }}
+  * {{ box-sizing:border-box; }}
+  body {{
+    margin:0; background:var(--app); color:var(--fg);
+    font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+  }}
+  .wrap {{ max-width:880px; margin:0 auto; padding:40px 24px; }}
+  header.top {{ border-bottom:1px solid var(--border); padding-bottom:20px; margin-bottom:24px; }}
+  .brand {{ display:flex; align-items:center; gap:10px; color:var(--accent); font-weight:700; }}
+  .brand .mark {{ width:28px; height:28px; border-radius:8px; background:var(--accent); display:inline-block; }}
+  h1 {{ font-size:24px; margin:14px 0 4px; }}
+  .sub {{ color:var(--fg-muted); font-size:14px; }}
+  .card {{ background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    padding:20px 24px; margin:18px 0; box-shadow:0 1px 3px rgba(15,23,42,.06); }}
+  h2 {{ font-size:18px; margin:0 0 14px; }}
+  .muted {{ color:var(--fg-muted); }}
+  .stats {{ display:flex; flex-wrap:wrap; gap:24px; }}
+  .stat {{ min-width:120px; }}
+  .stat .v {{ font-size:24px; font-weight:700; }}
+  .stat .l {{ font-size:12px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em; }}
+  .charts {{ display:flex; flex-wrap:wrap; gap:28px; align-items:center; }}
+  .legend {{ display:flex; flex-wrap:wrap; gap:14px; margin-top:10px; font-size:13px; color:var(--fg-secondary); }}
+  .legend-item {{ display:inline-flex; align-items:center; gap:6px; }}
+  .legend-dot {{ width:10px; height:10px; border-radius:3px; display:inline-block; }}
+  .prose h1,.prose h2,.prose h3 {{ margin:1.1em 0 .5em; }}
+  .prose pre {{ background:#0b10200a; border:1px solid var(--border); border-radius:10px;
+    padding:14px; overflow:auto; }}
+  .prose code {{ font-family:'JetBrains Mono',monospace; font-size:.85em; }}
+  .prose table {{ border-collapse:collapse; width:100%; }}
+  .prose th,.prose td {{ border:1px solid var(--border); padding:6px 10px; text-align:left; }}
+  .rec {{ border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin:12px 0; }}
+  .rec-head {{ display:flex; align-items:center; gap:10px; }}
+  .rec-title {{ font-weight:600; }}
+  .chip {{ font-size:12px; font-weight:600; padding:2px 8px; border-radius:6px; text-transform:capitalize; }}
+  .rec-meta {{ display:flex; gap:10px; align-items:center; margin:8px 0; font-size:13px; }}
+  .tag {{ background:#0b10200d; border-radius:6px; padding:2px 8px; font-size:12px; text-transform:capitalize; }}
+  .rec-section {{ margin-top:10px; }}
+  .rec-label {{ font-size:12px; color:var(--fg-muted); margin-bottom:4px; }}
+  pre {{ background:#0b10200a; border:1px solid var(--border); border-radius:8px; padding:12px;
+    overflow:auto; font-family:'JetBrains Mono',monospace; font-size:12px; }}
+  details.raw {{ margin-top:18px; }}
+  details.raw summary {{ cursor:pointer; font-weight:600; color:var(--accent); }}
+  footer {{ margin-top:28px; padding-top:16px; border-top:1px solid var(--border);
+    font-size:12px; color:var(--fg-muted); text-align:center; }}
+  @media print {{
+    body {{ background:#fff; }}
+    .card {{ box-shadow:none; break-inside:avoid; }}
+    .rec {{ break-inside:avoid; }}
+    .no-print {{ display:none; }}
+  }}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><span class="mark"></span> Observia</div>
+    <h1>{a_type.capitalize()} Analysis Report</h1>
+    <div class="sub">Analysis #{esc(str(getattr(analysis, 'id', '')))} &middot; Status: {a_status}
+      &middot; Created: {esc(created_s)} &middot; Completed: {esc(completed_s)}</div>
+  </header>
+
+  <section class="card">
+    <h2>Overview</h2>
+    <div class="stats">
+      <div class="stat"><div class="v">{total_recs}</div><div class="l">Recommendations</div></div>
+      <div class="stat"><div class="v" style="color:{SEVERITY_COLORS['critical']}">{counts['critical']}</div><div class="l">Critical</div></div>
+      <div class="stat"><div class="v" style="color:{SEVERITY_COLORS['high']}">{counts['high']}</div><div class="l">High</div></div>
+      <div class="stat"><div class="v">{a_status}</div><div class="l">Status</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Severity distribution</h2>
+    <div class="charts">{donut}{bars}</div>
+    {legend}
+  </section>
+
+  <section class="card">
+    <h2>Summary</h2>
+    <div class="prose">{summary_html}</div>
+  </section>
+
+  <section class="card">
+    <h2>Recommendations</h2>
+    {''.join(rec_blocks)}
+  </section>
+
+  {f'<section class="card">{raw_block}</section>' if raw_block else ''}
+
+  <footer>Generated by Observia &middot; {esc(datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC'))}</footer>
+</div>
+</body>
+</html>"""
 
 
 @router.get("/summary", response_model=ReportSummary)
@@ -248,8 +573,9 @@ async def generate_report(
     # Generate report content
     if request.format == "json":
         content = generate_json_report(analysis, recommendations, request.include_raw_data)
-        import json
         content = json.dumps(content, indent=2)
+    elif request.format == "html":
+        content = generate_html_report(analysis, recommendations, request.include_raw_data)
     else:
         content = generate_markdown_report(analysis, recommendations, request.include_raw_data)
 
