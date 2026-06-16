@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>Observia Tool</Name>
+  <Repository>observia-tool:latest</Repository>
+  <Registry/>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://gitlab.com/warezfr/observia-tool/-/issues</Support>
+  <Project>https://gitlab.com/warezfr/observia-tool</Project>
+  <Overview>Plateforme d'analyse Dynatrace assistée par IA. Interface web unifiée (nginx + API FastAPI) dans un seul conteneur.</Overview>
+  <Description>Observia Tool analyse vos environnements Dynatrace et génère des recommandations via des fournisseurs IA configurables.&#xD;&#xD;**Prérequis :** construire l'image localement avant le premier lancement :&#xD;`docker build -t observia-tool:latest /chemin/vers/observia-tool`&#xD;&#xD;Les données (base SQLite) sont persistées dans le volume AppData.</Description>
+  <Category>Tools:Utilities</Category>
+  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <Icon>https://raw.githubusercontent.com/unraid/community.applications/master/plugins/community.applications/images/question.png</Icon>
+  <Config Name="WebUI Port" Target="8080" Default="8080" Mode="tcp" Description="Port HTTP de l'interface web" Type="Port" Display="always" Required="true" Mask="false">8080</Config>
+  <Config Name="AppData" Target="/app/data" Default="/mnt/user/appdata/observia-tool" Mode="rw" Description="Données persistantes (base SQLite)" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/observia-tool</Config>
+  <Config Name="SECRET_KEY" Target="SECRET_KEY" Default="change-me-in-production" Mode="" Description="Clé secrète pour le chiffrement des tokens (changez-la en production)" Type="Variable" Display="always" Required="true" Mask="true">change-me-in-production</Config>
+  <Config Name="DATABASE_URL" Target="DATABASE_URL" Default="sqlite+aiosqlite:////app/data/observia.db" Mode="" Description="URL de connexion SQLite (ne pas modifier sauf besoin avancé)" Type="Variable" Display="advanced" Required="true" Mask="false">sqlite+aiosqlite:////app/data/observia.db</Config>
+  <Config Name="CORS_ORIGINS" Target="CORS_ORIGINS" Default='["*"]' Mode="" Description="Origines CORS autorisées (JSON)" Type="Variable" Display="advanced" Required="false" Mask="false">["*"]</Config>
+  <Config Name="DEBUG" Target="DEBUG" Default="false" Mode="" Description="Activer le mode debug" Type="Variable" Display="advanced" Required="false" Mask="false">false</Config>
+</Container>
