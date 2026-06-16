@@ -25,8 +25,8 @@ class MCPClient:
     """
     url: str
     token: str
-    platform_token: str | None = None
     env_type: str  # "saas" or "managed"
+    platform_token: str | None = None
     timeout: int = 30
     max_retries: int = 3
     _session: Any = field(default=None, init=False, repr=False)
