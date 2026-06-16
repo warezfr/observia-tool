@@ -31,14 +31,20 @@ class AIProviderConfig:
     def litellm_model(self) -> str:
         """Convert provider type and model to LiteLLM format."""
         prefix_map = {
-            AIProviderType.OPENAI: "",
+            # OpenAI-compatible endpoints (incl. custom api_base) must be routed
+            # through the "openai/" provider so LiteLLM knows how to call them.
+            AIProviderType.OPENAI: "openai/",
             AIProviderType.ANTHROPIC: "",
             AIProviderType.GEMINI: "gemini/",
             AIProviderType.AZURE_OPENAI: "azure/",
             AIProviderType.AWS_BEDROCK: "bedrock/",
             AIProviderType.OLLAMA: "ollama/",
         }
-        return f"{prefix_map[self.provider_type]}{self.model}"
+        prefix = prefix_map[self.provider_type]
+        # Avoid double-prefixing if the model already includes the provider.
+        if prefix and self.model.startswith(prefix):
+            return self.model
+        return f"{prefix}{self.model}"
 
 
 @dataclass
