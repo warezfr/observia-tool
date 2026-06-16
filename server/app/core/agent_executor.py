@@ -79,7 +79,13 @@ class AgentExecutor:
 
             for tool_call in response["tool_calls"]:
                 tool_name = tool_call.function.name
-                tool_args = json.loads(tool_call.function.arguments)
+                raw_args = (tool_call.function.arguments or "").strip()
+                try:
+                    tool_args = json.loads(raw_args) if raw_args else {}
+                except (json.JSONDecodeError, ValueError):
+                    tool_args = {}
+                if not isinstance(tool_args, dict):
+                    tool_args = {}
 
                 reasoning_steps.append(ReasoningStep(
                     step_type="tool_call",
@@ -90,9 +96,14 @@ class AgentExecutor:
                 if self.on_step:
                     await self.on_step(reasoning_steps)
 
-                tool_result = await self.mcp_client.call_tool(tool_name, tool_args)
-                result_str = json.dumps(tool_result) if not isinstance(tool_result, str) else tool_result
-                raw_data.append({"tool": tool_name, "args": tool_args, "result": tool_result})
+                try:
+                    tool_result = await self.mcp_client.call_tool(tool_name, tool_args)
+                    result_str = json.dumps(tool_result) if not isinstance(tool_result, str) else tool_result
+                    raw_data.append({"tool": tool_name, "args": tool_args, "result": tool_result})
+                except Exception as exc:  # noqa: BLE001 - feed tool errors back to the LLM
+                    logger.warning("Tool %s failed: %s", tool_name, exc)
+                    result_str = json.dumps({"error": str(exc)})
+                    raw_data.append({"tool": tool_name, "args": tool_args, "error": str(exc)})
 
                 reasoning_steps.append(ReasoningStep(
                     step_type="tool_result",
