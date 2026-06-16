@@ -1,10 +1,11 @@
 # Observia — "Clair" SaaS 2026 Redesign + Functional Improvements
 
 Date: 2026-06-16
-Status: Approved
+Status: Approved — implementation complete locally (commits `25cddea`–`d4fa819`); NAS
+deploy requires **container recreate** (see §9), not `docker restart` alone.
 Scope: End-to-end UI/UX redesign + functional improvements of the Observia self-hosted
 Dynatrace AI-analysis tool. Frontend (React 18 + Vite + TS + Tailwind 3 + recharts +
-lucide-react) and backend (FastAPI + SQLite). No NAS deploy.
+lucide-react) and backend (FastAPI + SQLite).
 
 ## 1. Design direction
 
@@ -121,3 +122,44 @@ logical groups; do not push.
 Analysis creation/polling, providers/environments CRUD, MCP/API tool flow, existing API
 contracts, recommendations status updates. Mock-data pages (Integrations/Automation/Users)
 keep their mock behaviour, only re-themed.
+
+## 9. Deployment (Unraid Docker)
+
+The unified image bakes the Vite build into `/usr/share/nginx/html` at **image build time**.
+After `docker build -t observia-tool:latest .`, the running container must be **recreated**
+from the new image. `docker restart observia-tool` keeps the old container filesystem and
+will **not** show UI changes.
+
+**Correct sequence on NAS** (`/mnt/user/appdata/observia-tool`):
+
+1. `rsync` or copy updated source (exclude `data/` volume).
+2. `docker build -t observia-tool:latest .`
+3. `docker stop observia-tool && docker rm observia-tool`
+4. `docker run -d --name observia-tool -p 8080:80 \
+     -v /mnt/user/appdata/observia-tool/data:/app/data \
+     -e DATABASE_URL=sqlite+aiosqlite:////app/data/observia.db \
+     -e SECRET_KEY=<unchanged> -e CORS_ORIGINS='["*"]' -e DEBUG=false \
+     observia-tool:latest`
+5. Hard-refresh browser (Ctrl+Shift+R) to bypass cached JS/CSS.
+
+**Deploy verification markers** (must pass before sign-off):
+
+| Check | Expected |
+|-------|----------|
+| `index.html` contains `observia-theme` anti-FOUC script | yes |
+| Built JS bundle contains `observia-theme` or `ThemeToggle` | yes |
+| UI default is light (`data-theme="light"` on `<html>`) | yes |
+| Topbar shows theme toggle (sun/moon) | yes |
+| AnalysisDetail has **Export HTML** button | yes |
+| `POST /api/v1/reports/generate` with `format:"html"` returns self-contained HTML | yes |
+
+## 10. Acceptance criteria (QA)
+
+- **Shell**: sidebar + topbar on all routes; theme toggle persists across reload.
+- **Dashboard / Reports**: ChartCard charts render; empty states when no data.
+- **Analyses**: DataTable search, sort, filters (status, type, environment).
+- **AnalysisDetail**: Markdown summary; collapsible reasoning timeline; JsonViewer for raw
+  data; live progress while `queued`/`running`; MD/JSON/HTML export downloads.
+- **HTML export**: offline-openable file with inline CSS, inline SVG severity chart,
+  print-friendly layout.
+- **Tests**: `npm test` (Vitest) and `pytest` (reports) pass in CI/local.
