@@ -48,23 +48,73 @@ class RecommendationEngine:
             },
         ]
         raw = await self.orchestrator.complete(messages=messages)
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError:
-            start = raw.find("[")
-            end = raw.rfind("]") + 1
-            data = json.loads(raw[start:end])
+        data = self._parse_json(raw)
 
-        return [
-            RawRecommendation(
-                title=r["title"],
-                description=r["description"],
-                impact=r["impact"],
-                severity=RecommendationSeverity(r["severity"]),
-                level=RecommendationLevel(r["level"]),
-                action=r.get("action"),
-                script=r.get("script"),
-                script_type=r.get("script_type"),
+        # Tolerate dict wrappers like {"recommendations": [...]} or {"items": [...]}.
+        if isinstance(data, dict):
+            for key in ("recommendations", "items", "results", "data"):
+                if isinstance(data.get(key), list):
+                    data = data[key]
+                    break
+            else:
+                # Single recommendation object, not an array.
+                data = [data]
+
+        if not isinstance(data, list):
+            logger.warning("Recommendation response was not a JSON array; got %s", type(data))
+            return []
+
+        recommendations: list[RawRecommendation] = []
+        for r in data:
+            if not isinstance(r, dict):
+                continue
+            title = r.get("title") or r.get("name")
+            description = r.get("description") or r.get("detail") or ""
+            if not title:
+                # Skip items without a usable title rather than crashing.
+                continue
+            recommendations.append(
+                RawRecommendation(
+                    title=str(title),
+                    description=str(description),
+                    impact=str(r.get("impact") or ""),
+                    severity=self._coerce_severity(r.get("severity")),
+                    level=self._coerce_level(r.get("level")),
+                    action=r.get("action"),
+                    script=r.get("script"),
+                    script_type=r.get("script_type"),
+                )
             )
-            for r in data
-        ]
+        return recommendations
+
+    @staticmethod
+    def _parse_json(raw: str):
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            pass
+        # Try to extract an array first, then an object.
+        for open_ch, close_ch in (("[", "]"), ("{", "}")):
+            start = raw.find(open_ch)
+            end = raw.rfind(close_ch) + 1
+            if start != -1 and end > start:
+                try:
+                    return json.loads(raw[start:end])
+                except json.JSONDecodeError:
+                    continue
+        logger.warning("Could not parse recommendation JSON from model output")
+        return []
+
+    @staticmethod
+    def _coerce_severity(value) -> RecommendationSeverity:
+        try:
+            return RecommendationSeverity(str(value).lower())
+        except ValueError:
+            return RecommendationSeverity.MEDIUM
+
+    @staticmethod
+    def _coerce_level(value) -> RecommendationLevel:
+        try:
+            return RecommendationLevel(str(value).lower())
+        except ValueError:
+            return RecommendationLevel.DESCRIPTIVE
