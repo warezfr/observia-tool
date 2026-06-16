@@ -21,18 +21,18 @@ export default function Card({
     <div
       className={`bg-surface border border-border rounded-xl shadow-soft animate-fadeIn ${
         hoverable
-          ? 'transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card hover:border-accent-ring'
+          ? 'transition-all duration-200 hover:-translate-y-px hover:shadow-card hover:border-accent-ring/40'
           : ''
       } ${className}`}
     >
       {title && (
-        <div className="px-5 py-3.5 border-b border-border text-sm font-semibold text-fg">
+        <div className="px-5 py-3.5 border-b border-border-subtle text-[13px] font-semibold text-fg tracking-tight">
           {title}
         </div>
       )}
       <div className={bodyClassName}>{children}</div>
       {footer && (
-        <div className="px-5 py-3 border-t border-border text-sm text-fg-muted">
+        <div className="px-5 py-3 border-t border-border-subtle text-[13px] text-fg-muted">
           {footer}
         </div>
       )}

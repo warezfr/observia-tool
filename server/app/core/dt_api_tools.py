@@ -1,9 +1,15 @@
+import hashlib
 import json
+import logging
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urljoin, urlparse, urlunparse
 
 import httpx
+
+from app.core.cache import get_cache_manager
+
+logger = logging.getLogger(__name__)
 
 
 def normalize_classic_url(url: str) -> str:
@@ -29,11 +35,28 @@ def normalize_classic_url(url: str) -> str:
 
 @dataclass
 class DynatraceApiToolProvider:
-    """Tool provider for Dynatrace Managed via Environment API v2 (direct HTTP)."""
+    """Tool provider for Dynatrace Managed via Environment API v2 (direct HTTP).
+
+    Design decision (Managed + MCP): the official ``@dynatrace-oss/dynatrace-mcp-server``
+    targets Grail/DQL on SaaS Platform tokens and requires interactive OAuth that
+    cannot run headless in this container. For Managed clusters (and SaaS without a
+    platform token) we therefore use this direct Environment API v2 provider, which
+    is fully supported on both ``*.live.dynatrace.com`` and ``/e/{env-id}`` Managed
+    URLs. Responses are cached (short TTL) to reduce latency and API consumption.
+    """
 
     base_url: str
     api_token: str
     timeout: float = 30.0
+    cache_ttl: int = 300
+
+    def _cache_key(self, tool_name: str, arguments: dict) -> str:
+        raw = json.dumps(
+            {"u": self.base_url, "t": tool_name, "a": arguments},
+            sort_keys=True,
+            default=str,
+        )
+        return "dt:" + hashlib.sha256(raw.encode()).hexdigest()
 
     async def list_tools(self) -> list[dict]:
         # Minimal curated tools for managed. Descriptions are used by the LLM.
@@ -62,8 +85,29 @@ class DynatraceApiToolProvider:
         t = timeout or self.timeout
         headers = {"Authorization": f"Api-Token {self.api_token}", "Accept": "application/json"}
 
+        # All Environment API v2 tools here are read-only GETs: cache responses
+        # with a short TTL to cut latency and API consumption during an analysis.
+        cache_key = self._cache_key(tool_name, arguments)
+        try:
+            cache = get_cache_manager()
+            cached = cache.get(cache_key)
+            if cached is not None:
+                logger.debug("Dynatrace cache hit for %s", tool_name)
+                return cached
+        except Exception as exc:  # noqa: BLE001
+            cache = None
+            logger.debug("Cache unavailable: %s", exc)
+
         def _u(path: str) -> str:
             return urljoin(self.base_url.rstrip("/") + "/", path.lstrip("/"))
+
+        def _store(value: Any) -> Any:
+            if cache is not None:
+                try:
+                    cache.set(cache_key, value, ttl=self.cache_ttl)
+                except Exception:  # noqa: BLE001
+                    pass
+            return value
 
         async with httpx.AsyncClient(timeout=t) as client:
             if tool_name == "list_problems":
@@ -72,7 +116,7 @@ class DynatraceApiToolProvider:
                     params["relativeTime"] = arguments["relativeTime"]
                 resp = await client.get(_u("/api/v2/problems"), headers=headers, params=params)
                 resp.raise_for_status()
-                return resp.json()
+                return _store(resp.json())
 
             if tool_name == "get_problem_details":
                 pid = arguments.get("problem_id") or arguments.get("id")
@@ -80,7 +124,7 @@ class DynatraceApiToolProvider:
                     raise ValueError("problem_id is required")
                 resp = await client.get(_u(f"/api/v2/problems/{pid}"), headers=headers)
                 resp.raise_for_status()
-                return resp.json()
+                return _store(resp.json())
 
             if tool_name == "query_metrics":
                 metric_selector = arguments.get("metricSelector") or arguments.get("metric_selector")
@@ -92,7 +136,7 @@ class DynatraceApiToolProvider:
                         params[k] = arguments[k]
                 resp = await client.get(_u("/api/v2/metrics/query"), headers=headers, params=params)
                 resp.raise_for_status()
-                return resp.json()
+                return _store(resp.json())
 
             if tool_name == "list_entities":
                 params = {}
@@ -102,7 +146,7 @@ class DynatraceApiToolProvider:
                     params["pageSize"] = arguments["pageSize"]
                 resp = await client.get(_u("/api/v2/entities"), headers=headers, params=params)
                 resp.raise_for_status()
-                return resp.json()
+                return _store(resp.json())
 
         raise ValueError(f"Unknown tool: {tool_name}")
 

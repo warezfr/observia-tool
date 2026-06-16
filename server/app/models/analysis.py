@@ -8,12 +8,14 @@ class AnalysisType(str, Enum):
     AVAILABILITY = "availability"
     SECURITY = "security"
     COST = "cost"
+    RELIABILITY = "reliability"
 
 
 class AnalysisStatus(str, Enum):
     QUEUED = "queued"
     RUNNING = "running"
     COMPLETED = "completed"
+    PARTIAL = "partial"
     FAILED = "failed"
 
 

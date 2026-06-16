@@ -3,60 +3,66 @@
 @tailwind utilities;
 
 /* ============================================================
-   Design tokens — RGB channels so Tailwind <alpha-value> works.
-   Light is the default theme; [data-theme="dark"] overrides.
+   Observia design system — zinc neutrals + teal observability accent
+   Taste-skill redesign: Linear-clean devtool, no AI-purple slop
    ============================================================ */
 :root {
   color-scheme: light;
-  --app: 246 247 249;
+  --app: 250 250 250;
   --surface: 255 255 255;
   --elevated: 255 255 255;
-  --border: 231 233 238;
+  --border: 228 228 231;
+  --border-subtle: 244 244 245;
 
-  --fg: 11 16 32;
-  --fg-secondary: 71 84 103;
-  --fg-muted: 107 114 128;
+  --fg: 9 9 11;
+  --fg-secondary: 82 82 91;
+  --fg-muted: 113 113 122;
 
-  --accent: 79 70 229;
-  --accent-hover: 67 56 202;
-  --accent-soft: 238 242 255;
-  --accent-ring: 199 210 254;
+  /* Teal observability accent — single locked palette */
+  --accent: 13 148 136;
+  --accent-hover: 15 118 110;
+  --accent-soft: 240 253 250;
+  --accent-ring: 153 246 228;
   --accent-fg: 255 255 255;
 
   --success: 22 163 74;
   --warning: 217 119 6;
   --error: 220 38 38;
-  --info: 37 99 235;
+  --info: 8 145 178;
 
   --sev-critical: 220 38 38;
   --sev-high: 234 88 12;
   --sev-medium: 217 119 6;
   --sev-low: 22 163 74;
 
-  --shadow: 15 23 42;
+  --shadow: 9 9 11;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
 }
 
 [data-theme='dark'] {
   color-scheme: dark;
-  --app: 11 14 20;
-  --surface: 17 21 29;
-  --elevated: 22 27 38;
-  --border: 31 36 48;
+  --app: 9 9 11;
+  --surface: 24 24 27;
+  --elevated: 39 39 42;
+  --border: 39 39 42;
+  --border-subtle: 31 31 35;
 
-  --fg: 230 232 238;
-  --fg-secondary: 180 188 203;
-  --fg-muted: 138 147 166;
+  --fg: 250 250 250;
+  --fg-secondary: 161 161 170;
+  --fg-muted: 113 113 122;
 
-  --accent: 129 140 248;
-  --accent-hover: 165 180 252;
-  --accent-soft: 30 31 64;
-  --accent-ring: 67 56 202;
-  --accent-fg: 12 14 22;
+  --accent: 45 212 191;
+  --accent-hover: 94 234 212;
+  --accent-soft: 19 78 74;
+  --accent-ring: 17 94 89;
+  --accent-fg: 9 9 11;
 
   --success: 34 197 94;
   --warning: 245 158 11;
   --error: 248 113 113;
-  --info: 96 165 250;
+  --info: 34 211 238;
 
   --sev-critical: 248 113 113;
   --sev-high: 251 146 60;
@@ -68,7 +74,9 @@
 
 @layer base {
   html {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Geist Variable', 'Geist', system-ui, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    scroll-behavior: smooth;
   }
 
   body {
@@ -77,23 +85,47 @@
     color: rgb(var(--fg));
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    transition: background-color 0.25s ease, color 0.25s ease;
+    font-variant-numeric: tabular-nums;
   }
 
   code,
-  pre {
-    font-family: 'JetBrains Mono', monospace;
+  pre,
+  .font-mono {
+    font-family: 'Geist Mono Variable', 'Geist Mono', ui-monospace, monospace;
   }
 
   * {
     border-color: rgb(var(--border));
   }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--accent-ring));
+    outline-offset: 2px;
+  }
+}
+
+/* Subtle film grain — breaks digital flatness */
+.app-grain::before {
+  content: '';
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  opacity: 0.028;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 128px 128px;
+}
+
+[data-theme='dark'] .app-grain::before {
+  opacity: 0.04;
 }
 
 @layer utilities {
   .skeleton {
-    @apply relative overflow-hidden rounded;
-    background-color: rgb(var(--border) / 0.6);
+    @apply relative overflow-hidden rounded-md;
+    background-color: rgb(var(--border-subtle));
   }
   .skeleton::after {
     content: '';
@@ -101,99 +133,79 @@
     background: linear-gradient(
       90deg,
       transparent,
-      rgb(var(--fg-muted) / 0.12),
+      rgb(var(--fg-muted) / 0.1),
       transparent
     );
     animation: shimmer 1.5s infinite;
   }
+
+  .text-balance {
+    text-wrap: balance;
+  }
 }
 
-/* ============================================================
-   Themed prose for Markdown rendering
-   ============================================================ */
+/* Markdown prose */
 .prose-observia {
   color: rgb(var(--fg-secondary));
   font-size: 0.925rem;
-  line-height: 1.7;
+  line-height: 1.75;
   word-break: break-word;
+  max-width: 65ch;
 }
-.prose-observia > :first-child {
-  margin-top: 0;
-}
-.prose-observia > :last-child {
-  margin-bottom: 0;
-}
+.prose-observia > :first-child { margin-top: 0; }
+.prose-observia > :last-child { margin-bottom: 0; }
 .prose-observia h1,
 .prose-observia h2,
 .prose-observia h3,
 .prose-observia h4 {
   color: rgb(var(--fg));
   font-weight: 600;
-  line-height: 1.3;
-  margin: 1.4em 0 0.6em;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  margin: 1.5em 0 0.5em;
 }
-.prose-observia h1 {
-  font-size: 1.5rem;
-}
-.prose-observia h2 {
-  font-size: 1.25rem;
-}
-.prose-observia h3 {
-  font-size: 1.1rem;
-}
-.prose-observia h4 {
-  font-size: 1rem;
-}
-.prose-observia p {
-  margin: 0.7em 0;
-}
+.prose-observia h1 { font-size: 1.5rem; }
+.prose-observia h2 { font-size: 1.25rem; }
+.prose-observia h3 { font-size: 1.1rem; }
+.prose-observia h4 { font-size: 1rem; }
+.prose-observia p { margin: 0.75em 0; }
 .prose-observia a {
   color: rgb(var(--accent));
   text-decoration: underline;
-  text-underline-offset: 2px;
+  text-underline-offset: 3px;
+  transition: color 0.15s ease;
 }
-.prose-observia strong {
-  color: rgb(var(--fg));
-  font-weight: 600;
-}
+.prose-observia a:hover { color: rgb(var(--accent-hover)); }
+.prose-observia strong { color: rgb(var(--fg)); font-weight: 600; }
 .prose-observia ul,
-.prose-observia ol {
-  margin: 0.7em 0;
-  padding-left: 1.4em;
-}
-.prose-observia ul {
-  list-style: disc;
-}
-.prose-observia ol {
-  list-style: decimal;
-}
-.prose-observia li {
-  margin: 0.3em 0;
-}
-.prose-observia li::marker {
-  color: rgb(var(--fg-muted));
-}
+.prose-observia ol { margin: 0.75em 0; padding-left: 1.4em; }
+.prose-observia ul { list-style: disc; }
+.prose-observia ol { list-style: decimal; }
+.prose-observia li { margin: 0.25em 0; }
+.prose-observia li::marker { color: rgb(var(--fg-muted)); }
 .prose-observia blockquote {
-  border-left: 3px solid rgb(var(--accent) / 0.5);
+  border-left: 2px solid rgb(var(--accent) / 0.4);
   padding-left: 1em;
-  margin: 0.9em 0;
+  margin: 1em 0;
   color: rgb(var(--fg-muted));
+  font-style: italic;
 }
 .prose-observia code {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Geist Mono Variable', monospace;
   font-size: 0.825em;
   background: rgb(var(--accent-soft));
   color: rgb(var(--accent));
-  padding: 0.12em 0.4em;
+  padding: 0.15em 0.45em;
   border-radius: 5px;
 }
 .prose-observia pre {
-  background: rgb(var(--fg) / 0.04);
+  background: rgb(var(--fg) / 0.03);
   border: 1px solid rgb(var(--border));
-  border-radius: 10px;
-  padding: 0.9em 1em;
+  border-radius: var(--radius-md);
+  padding: 1em 1.15em;
   overflow-x: auto;
-  margin: 0.9em 0;
+  margin: 1em 0;
+  max-width: none;
 }
 [data-theme='dark'] .prose-observia pre {
   background: rgb(0 0 0 / 0.35);
@@ -207,38 +219,36 @@
 .prose-observia table {
   width: 100%;
   border-collapse: collapse;
-  margin: 0.9em 0;
+  margin: 1em 0;
   font-size: 0.85rem;
+  max-width: none;
 }
 .prose-observia th,
 .prose-observia td {
   border: 1px solid rgb(var(--border));
-  padding: 0.5em 0.7em;
+  padding: 0.55em 0.75em;
   text-align: left;
 }
 .prose-observia th {
   background: rgb(var(--fg) / 0.03);
   color: rgb(var(--fg));
   font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 .prose-observia hr {
   border: none;
   border-top: 1px solid rgb(var(--border));
-  margin: 1.2em 0;
+  margin: 1.5em 0;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgb(var(--fg-muted) / 0.35);
-  border-radius: 5px;
+  background: rgb(var(--fg-muted) / 0.3);
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgb(var(--fg-muted) / 0.55);
+  background: rgb(var(--fg-muted) / 0.5);
 }

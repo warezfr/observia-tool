@@ -6,7 +6,12 @@ from urllib.parse import urlparse
 
 from app.db.database import get_db, AIProviderDB
 from app.db.repositories import AIProviderRepository
-from app.models.ai_provider import AIProviderCreate, AIProviderResponse, AIProviderType
+from app.models.ai_provider import (
+    AIProviderCreate,
+    AIProviderResponse,
+    AIProviderType,
+    AIProviderUpdate,
+)
 
 router = APIRouter()
 
@@ -77,6 +82,17 @@ async def create_ai_provider(data: AIProviderCreate, db: AsyncSession = Depends(
 async def list_ai_providers(db: AsyncSession = Depends(get_db)):
     repo = AIProviderRepository(db)
     return await repo.get_all()
+
+
+@router.patch("/{provider_id}", response_model=AIProviderResponse)
+async def update_ai_provider(
+    provider_id: int, data: AIProviderUpdate, db: AsyncSession = Depends(get_db)
+):
+    repo = AIProviderRepository(db)
+    provider = await repo.update(provider_id, data)
+    if not provider:
+        raise HTTPException(status_code=404, detail="AI provider not found")
+    return provider
 
 
 @router.delete("/{provider_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -1,10 +1,39 @@
 import asyncio
+import json
 import logging
+from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import urlparse, urlunparse
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_mcp_tool_result(content: Any) -> Any:
+    """Convert MCP CallToolResult.content (TextContent blocks) to JSON-safe data."""
+
+    def _from_text(text: str) -> Any:
+        stripped = (text or "").strip()
+        if not stripped:
+            return ""
+        try:
+            return json.loads(stripped)
+        except (json.JSONDecodeError, ValueError):
+            return text
+
+    if content is None:
+        return None
+    if isinstance(content, list):
+        if not content:
+            return []
+        if all(hasattr(item, "text") for item in content):
+            if len(content) == 1:
+                return _from_text(content[0].text)
+            return [_from_text(item.text) for item in content]
+        return content
+    if hasattr(content, "text"):
+        return _from_text(content.text)
+    return content
 
 
 class MCPConnectionError(Exception):
@@ -30,6 +59,7 @@ class MCPClient:
     timeout: int = 30
     max_retries: int = 3
     _session: Any = field(default=None, init=False, repr=False)
+    _exit_stack: AsyncExitStack | None = field(default=None, init=False, repr=False)
     _lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False, repr=False)
 
     async def connect(self) -> bool:
@@ -113,13 +143,14 @@ class MCPClient:
                 env=env,
             )
 
-            # Use context manager to properly manage stdio streams lifecycle
-            stdio_cm = stdio_client(server_params)
-            read, write = await stdio_cm.__aenter__()
-            session = ClientSession(read, write)
-            await session.initialize()
+            # Keep stdio + session contexts alive for the analysis lifetime.
+            # Manual __aenter__ breaks anyio cancel scopes and causes initialize() to hang.
+            stack = AsyncExitStack()
+            read, write = await stack.enter_async_context(stdio_client(server_params))
+            session = await stack.enter_async_context(ClientSession(read, write))
+            await asyncio.wait_for(session.initialize(), timeout=self.timeout)
+            self._exit_stack = stack
             self._session = session
-            self._stdio_cm = stdio_cm  # Store for proper cleanup
             return {"status": "connected"}
         except ImportError as e:
             raise MCPConnectionError(f"MCP package not available: {e}")
@@ -137,28 +168,28 @@ class MCPClient:
         if not self._session:
             raise MCPConnectionError("Not connected. Call connect() first.")
 
+        effective_timeout = timeout if timeout is not None else float(self.timeout)
         tool_coro = self._session.call_tool(tool_name, arguments)
-        if timeout:
-            result = await asyncio.wait_for(tool_coro, timeout=timeout)
-        else:
-            result = await tool_coro
-        return result.content
+        result = await asyncio.wait_for(tool_coro, timeout=effective_timeout)
+        return _normalize_mcp_tool_result(result.content)
 
     async def list_tools(self) -> list[dict]:
         """List all available tools from the MCP server."""
         if not self._session:
             raise MCPConnectionError("Not connected")
-        result = await self._session.list_tools()
+        result = await asyncio.wait_for(
+            self._session.list_tools(),
+            timeout=float(self.timeout),
+        )
         return [{"name": t.name, "description": t.description} for t in result.tools]
 
     async def disconnect(self) -> None:
         """Close the MCP connection and cleanup resources."""
         async with self._lock:
             self._session = None
-            # Properly close the stdio context manager
-            if hasattr(self, '_stdio_cm') and self._stdio_cm is not None:
-                await self._stdio_cm.__aexit__(None, None, None)
-                self._stdio_cm = None
+            if self._exit_stack is not None:
+                await self._exit_stack.aclose()
+                self._exit_stack = None
             # Remove from pool if present
             async with _pool_lock:
                 if self.url in _connection_pool:

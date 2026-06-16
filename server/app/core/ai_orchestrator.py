@@ -18,6 +18,24 @@ class AIProviderType(str, Enum):
     AWS_BEDROCK = "bedrock"
     OLLAMA = "ollama"
 
+    @classmethod
+    def from_db_value(cls, value: str) -> "AIProviderType":
+        """Map persisted provider_type values to orchestrator enum members.
+
+        The DB/API model stores ``azure_openai``/``aws_bedrock`` while the
+        orchestrator/LiteLLM use ``azure``/``bedrock``. This bridges both.
+        """
+        aliases = {
+            "azure_openai": cls.AZURE_OPENAI,
+            "azure": cls.AZURE_OPENAI,
+            "aws_bedrock": cls.AWS_BEDROCK,
+            "bedrock": cls.AWS_BEDROCK,
+        }
+        normalized = (value or "").strip().lower()
+        if normalized in aliases:
+            return aliases[normalized]
+        return cls(normalized)
+
 
 @dataclass
 class AIProviderConfig:
@@ -98,6 +116,7 @@ class AIOrchestrator:
                     "messages": messages,
                     "tools": tools,
                     "max_tokens": max_tokens,
+                    "timeout": 120,
                 }
                 if provider.api_key:
                     kwargs["api_key"] = provider.api_key

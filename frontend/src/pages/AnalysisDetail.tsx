@@ -6,12 +6,15 @@ import {
   Download,
   FileCode2,
   FileJson,
+  FileText,
   Loader2,
   AlertTriangle,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react';
 import { useAnalyses } from '../contexts/AnalysesContext';
 import { recommendationsApi } from '../services/api';
-import { reportsApi } from '../services/reports-api';
+import { reportsApi, type AnalysisComparison } from '../services/reports-api';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -38,6 +41,7 @@ export default function AnalysisDetail() {
   const [error, setError] = useState('');
   const [exporting, setExporting] = useState<string | null>(null);
   const [showRaw, setShowRaw] = useState(false);
+  const [comparison, setComparison] = useState<AnalysisComparison | null>(null);
 
   const analysisId = useMemo(() => (id ? Number(id) : null), [id]);
 
@@ -82,6 +86,34 @@ export default function AnalysisDetail() {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+  };
+
+  useEffect(() => {
+    if (!analysisId || !analysis) return;
+    if (!['completed', 'partial'].includes(analysis.status)) return;
+    reportsApi
+      .getComparison(analysisId)
+      .then(setComparison)
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysisId, analysis?.status]);
+
+  const handleExportPdf = async () => {
+    if (!analysisId) return;
+    setExporting('pdf');
+    try {
+      const blob = await reportsApi.downloadPdf(analysisId, true);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `analysis-${analysisId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(null);
+    }
   };
 
   const handleExport = async (format: 'json' | 'markdown' | 'html') => {
@@ -154,6 +186,9 @@ export default function AnalysisDetail() {
           <Button variant="secondary" size="sm" loading={exporting === 'json'} onClick={() => handleExport('json')}>
             <FileJson size={15} /> JSON
           </Button>
+          <Button variant="secondary" size="sm" loading={exporting === 'pdf'} onClick={handleExportPdf}>
+            <FileText size={15} /> PDF
+          </Button>
           <Button variant="primary" size="sm" loading={exporting === 'html'} onClick={() => handleExport('html')}>
             <Download size={15} /> Export HTML
           </Button>
@@ -201,6 +236,34 @@ export default function AnalysisDetail() {
       {analysis.result?.summary && (
         <Card title="Result summary">
           <Markdown>{analysis.result.summary}</Markdown>
+        </Card>
+      )}
+
+      {comparison?.has_baseline && comparison.metrics.length > 0 && (
+        <Card title={`Comparison vs analysis #${comparison.baseline_analysis_id}`}>
+          <div className="space-y-2">
+            {comparison.metrics.map((m) => (
+              <div
+                key={m.metric}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2"
+              >
+                <span className="min-w-0 truncate font-mono text-xs text-fg-secondary">{m.metric}</span>
+                <div className="flex items-center gap-3 text-sm">
+                  <span className="text-fg-muted">
+                    {m.previous_avg} → <span className="text-fg">{m.current_avg}</span>
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1 font-medium ${
+                      m.regressed ? 'text-error' : 'text-success'
+                    }`}
+                  >
+                    {m.regressed ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                    {m.delta_pct !== null ? `${m.delta_pct > 0 ? '+' : ''}${m.delta_pct}%` : '—'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         </Card>
       )}
 

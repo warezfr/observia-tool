@@ -11,7 +11,10 @@ import {
   Activity,
   ArrowRight,
   Sparkles,
+  Plus,
+  Radio,
 } from 'lucide-react';
+import Button from '../components/ui/Button';
 import {
   BarChart,
   Bar,
@@ -41,6 +44,7 @@ const typeIcon: Record<AnalysisType, ReactIcon> = {
   availability: Activity,
   security: ShieldCheck,
   cost: DollarSign,
+  reliability: Activity,
 };
 
 function StatCard({
@@ -57,19 +61,23 @@ function StatCard({
   loading?: boolean;
 }) {
   return (
-    <Card hoverable>
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-fg-muted text-sm mb-2">{label}</div>
+    <Card hoverable bodyClassName="p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-fg-muted mb-1.5">
+            {label}
+          </p>
           {loading ? (
-            <Skeleton className="h-8 w-12" />
+            <Skeleton className="h-8 w-14" />
           ) : (
-            <div className="text-3xl font-semibold text-fg">{value}</div>
+            <p className="text-[28px] font-semibold leading-none tracking-tighter text-fg tabular-nums">
+              {value}
+            </p>
           )}
         </div>
-        <div className={`p-3 rounded-xl ${accent}`}>
-          <Icon size={22} />
-        </div>
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${accent}`}>
+          <Icon size={20} strokeWidth={1.75} />
+        </span>
       </div>
     </Card>
   );
@@ -99,6 +107,7 @@ export default function Dashboard() {
       availability: 0,
       security: 0,
       cost: 0,
+      reliability: 0,
     };
     analyses.forEach(a => {
       if (a.analysis_type in counts) counts[a.analysis_type] += 1;
@@ -124,11 +133,38 @@ export default function Dashboard() {
   const needsSetup = !envLoading && (environments.length === 0 || providers.length === 0);
 
   return (
-    <div className="space-y-6 animate-fadeIn">
-      <div>
-        <h1 className="text-2xl font-semibold text-fg">Dashboard</h1>
-        <p className="text-fg-muted text-sm mt-1">Overview of your Dynatrace AI analyses</p>
-      </div>
+    <div className="space-y-8 animate-fadeIn">
+      <section className="relative overflow-hidden rounded-2xl border border-border bg-surface p-6 shadow-soft">
+        <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-accent/10 blur-3xl" />
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="max-w-xl">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent-ring/60 bg-accent-soft px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-accent">
+              <Radio size={12} strokeWidth={2} />
+              Observability control plane
+            </div>
+            <h1 className="text-balance text-[26px] font-semibold tracking-tighter text-fg sm:text-[30px]">
+              Dynatrace insights, analyzed by AI
+            </h1>
+            <p className="mt-2 text-[15px] leading-relaxed text-fg-secondary">
+              Run performance, reliability, and security analyses across your environments — with
+              actionable SRE reports in minutes.
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <Link to="/analyses">
+              <Button size="lg">
+                <Plus size={16} strokeWidth={2} />
+                New analysis
+              </Button>
+            </Link>
+            <Link to="/reports">
+              <Button variant="secondary" size="lg">
+                View reports
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -282,7 +318,7 @@ function RecentRow({ analysis }: { analysis: Analysis }) {
   return (
     <Link
       to={`/analyses/${analysis.id}`}
-      className="flex items-center justify-between p-3 rounded-lg border border-transparent hover:border-border hover:bg-fg/[0.03] transition-colors"
+      className="group flex items-center justify-between rounded-lg border border-transparent p-3 transition-all duration-200 hover:border-border hover:bg-fg/[0.03] active:scale-[0.995]"
     >
       <div className="flex items-center gap-3 min-w-0">
         <div className="p-2 rounded-lg bg-accent-soft text-accent shrink-0">

@@ -4,7 +4,7 @@ from urllib.parse import urlparse, urlunparse
 
 from app.db.database import get_db
 from app.db.repositories import EnvironmentRepository
-from app.models.environment import EnvironmentCreate, EnvironmentResponse
+from app.models.environment import EnvironmentCreate, EnvironmentResponse, EnvironmentUpdate
 
 router = APIRouter()
 
@@ -26,6 +26,17 @@ async def list_environments(db: AsyncSession = Depends(get_db)):
 async def get_environment(env_id: int, db: AsyncSession = Depends(get_db)):
     repo = EnvironmentRepository(db)
     env = await repo.get_by_id(env_id)
+    if not env:
+        raise HTTPException(status_code=404, detail="Environment not found")
+    return env
+
+
+@router.patch("/{env_id}", response_model=EnvironmentResponse)
+async def update_environment(
+    env_id: int, data: EnvironmentUpdate, db: AsyncSession = Depends(get_db)
+):
+    repo = EnvironmentRepository(db)
+    env = await repo.update(env_id, data)
     if not env:
         raise HTTPException(status_code=404, detail="Environment not found")
     return env

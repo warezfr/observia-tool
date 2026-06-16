@@ -1,6 +1,6 @@
 export type EnvironmentType = "saas" | "managed";
-export type AnalysisType = "performance" | "availability" | "security" | "cost";
-export type AnalysisStatus = "queued" | "running" | "completed" | "failed";
+export type AnalysisType = "performance" | "availability" | "security" | "cost" | "reliability";
+export type AnalysisStatus = "queued" | "running" | "completed" | "partial" | "failed";
 export type RecommendationLevel = "descriptive" | "prescriptive" | "script";
 export type RecommendationSeverity = "critical" | "high" | "medium" | "low";
 export type RecommendationStatus = "new" | "acknowledged" | "resolved";

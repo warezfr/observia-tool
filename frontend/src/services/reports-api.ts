@@ -53,4 +53,31 @@ export const reportsApi = {
     const { data } = await client.post('/reports/generate', req);
     return data;
   },
+  downloadPdf: async (analysisId: number, includeRawData = false): Promise<Blob> => {
+    const { data } = await client.get(`/reports/analysis/${analysisId}/pdf`, {
+      params: { include_raw_data: includeRawData },
+      responseType: 'blob',
+    });
+    return data as Blob;
+  },
+  getComparison: async (analysisId: number): Promise<AnalysisComparison> => {
+    const { data } = await client.get(`/analyses/${analysisId}/comparison`);
+    return data;
+  },
 };
+
+export interface MetricComparison {
+  metric: string;
+  current_avg: number;
+  previous_avg: number;
+  delta_avg: number;
+  delta_pct: number | null;
+  regressed: boolean;
+}
+
+export interface AnalysisComparison {
+  has_baseline: boolean;
+  baseline_analysis_id?: number;
+  baseline_created_at?: string | null;
+  metrics: MetricComparison[];
+}

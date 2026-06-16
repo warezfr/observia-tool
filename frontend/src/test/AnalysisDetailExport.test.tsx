@@ -25,7 +25,11 @@ const generateMock = vi.fn().mockResolvedValue({
 });
 
 vi.mock('../services/reports-api', () => ({
-  reportsApi: { generate: (req: unknown) => generateMock(req) },
+  reportsApi: {
+    generate: (req: unknown) => generateMock(req),
+    getComparison: vi.fn().mockResolvedValue({ has_baseline: false, metrics: [] }),
+    downloadPdf: vi.fn().mockResolvedValue(new Blob()),
+  },
 }));
 
 vi.mock('../services/api', () => ({

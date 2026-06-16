@@ -2,6 +2,7 @@ from app.plugins.performance import PerformancePlugin
 from app.plugins.availability import AvailabilityPlugin
 from app.plugins.security import SecurityPlugin
 from app.plugins.cost import CostPlugin
+from app.plugins.reliability import ReliabilityPlugin
 from app.plugins.base import BaseAnalysisPlugin
 
 PLUGIN_REGISTRY: dict[str, BaseAnalysisPlugin] = {
@@ -9,6 +10,7 @@ PLUGIN_REGISTRY: dict[str, BaseAnalysisPlugin] = {
     "availability": AvailabilityPlugin(),
     "security": SecurityPlugin(),
     "cost": CostPlugin(),
+    "reliability": ReliabilityPlugin(),
 }
 
 

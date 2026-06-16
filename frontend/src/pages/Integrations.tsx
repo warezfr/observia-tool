@@ -1,88 +1,134 @@
-import { useState } from 'react';
-import IntegrationCard from '../components/IntegrationCard';
+import { useEffect, useState } from 'react';
+import { Plus, Trash2, Webhook, MessageSquare } from 'lucide-react';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import Badge from '../components/ui/Badge';
+import { integrationsApi, type Integration, type IntegrationCreate } from '../services/automation-api';
+import { useToast } from '../contexts/ToastContext';
 
-interface Integration {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  status: 'connected' | 'not_configured' | 'error';
-}
-
-const integrations: Integration[] = [
-  {
-    id: 'jira',
-    name: 'Jira',
-    description: 'Auto-create issues for critical recommendations',
-    icon: '📋',
-    status: 'not_configured',
-  },
-  {
-    id: 'pagerduty',
-    name: 'PagerDuty',
-    description: 'Trigger incidents from analysis alerts',
-    icon: '🚨',
-    status: 'not_configured',
-  },
-  {
-    id: 'slack',
-    name: 'Slack',
-    description: 'Send notifications to Slack channels',
-    icon: '💬',
-    status: 'connected',
-  },
-  {
-    id: 'webhooks',
-    name: 'Custom Webhooks',
-    description: 'Send data to custom endpoints',
-    icon: '🔗',
-    status: 'not_configured',
-  },
-  {
-    id: 'dynatrace',
-    name: 'Dynatrace Enhanced',
-    description: 'Advanced metrics and custom queries',
-    icon: '📊',
-    status: 'connected',
-  },
-];
+const emptyForm: IntegrationCreate = { kind: 'slack', name: '', config: { url: '' }, enabled: true };
 
 export default function Integrations() {
-  const [integrationsState, setIntegrations] = useState(integrations);
+  const toast = useToast();
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
+  const [showEditor, setShowEditor] = useState(false);
+  const [form, setForm] = useState<IntegrationCreate>(emptyForm);
+  const [saving, setSaving] = useState(false);
 
-  const handleConfigure = (id: string) => {
-    console.log('Configure:', id);
-    // TODO: Implement configuration modal
+  const reload = () => integrationsApi.list().then(setIntegrations).catch(() => {});
+
+  useEffect(() => {
+    reload();
+  }, []);
+
+  const handleSave = async () => {
+    const url = (form.config.url as string) || '';
+    if (!form.name || !url) {
+      toast.error('Name and URL are required');
+      return;
+    }
+    setSaving(true);
+    try {
+      await integrationsApi.create(form);
+      toast.success('Integration added');
+      setForm(emptyForm);
+      setShowEditor(false);
+      reload();
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDisconnect = (id: string) => {
-    setIntegrations(
-      integrationsState.map(i =>
-        i.id === id ? { ...i, status: 'not_configured' as const } : i
-      )
-    );
+  const handleDelete = async (id: number) => {
+    await integrationsApi.delete(id);
+    reload();
   };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-fg">Integrations</h1>
-        <p className="text-fg-muted text-sm mt-1">Connect with your favorite tools</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-fg">Integrations</h1>
+          <p className="text-fg-muted text-sm mt-1">
+            Send analysis notifications to Slack or a custom webhook
+          </p>
+        </div>
+        <Button onClick={() => setShowEditor(!showEditor)} className="flex items-center gap-2">
+          <Plus size={18} /> Add Integration
+        </Button>
       </div>
 
-      <div className="space-y-3">
-        {integrationsState.map(integration => (
-          <IntegrationCard
-            key={integration.id}
-            name={integration.name}
-            description={integration.description}
-            icon={integration.icon}
-            status={integration.status}
-            onConfigure={() => handleConfigure(integration.id)}
-            onDisconnect={() => handleDisconnect(integration.id)}
+      {showEditor && (
+        <Card title="New integration" bodyClassName="p-4 space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <select
+              className="rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+              value={form.kind}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, kind: e.target.value as 'slack' | 'webhook' }))
+              }
+            >
+              <option value="slack">Slack (incoming webhook)</option>
+              <option value="webhook">Generic webhook</option>
+            </select>
+            <input
+              className="rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+              placeholder="Name"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            />
+          </div>
+          <input
+            className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+            placeholder="https://hooks.slack.com/... or your webhook URL"
+            value={(form.config.url as string) || ''}
+            onChange={(e) => setForm((f) => ({ ...f, config: { url: e.target.value } }))}
           />
+          <div className="flex gap-2">
+            <Button variant="primary" loading={saving} onClick={handleSave}>Save</Button>
+            <Button variant="ghost" onClick={() => setShowEditor(false)}>Cancel</Button>
+          </div>
+        </Card>
+      )}
+
+      <div className="space-y-3">
+        {integrations.map((integ) => (
+          <Card key={integ.id} bodyClassName="p-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              {integ.kind === 'slack' ? (
+                <MessageSquare className="text-accent shrink-0" size={20} />
+              ) : (
+                <Webhook className="text-accent shrink-0" size={20} />
+              )}
+              <div className="min-w-0">
+                <p className="font-medium text-fg">{integ.name}</p>
+                <p className="truncate text-xs text-fg-muted">{(integ.config?.url as string) || ''}</p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-3">
+              <Badge variant={integ.enabled ? 'success' : 'default'}>
+                {integ.enabled ? 'enabled' : 'disabled'}
+              </Badge>
+              <button
+                onClick={() => handleDelete(integ.id)}
+                title="Delete"
+                className="p-2 rounded-lg text-fg-muted hover:text-error hover:bg-error/10 transition-colors"
+              >
+                <Trash2 size={18} />
+              </button>
+            </div>
+          </Card>
         ))}
       </div>
+
+      {integrations.length === 0 && !showEditor && (
+        <Card bodyClassName="p-8 text-center">
+          <p className="text-fg-muted">No integrations configured yet</p>
+          <Button variant="primary" onClick={() => setShowEditor(true)} className="mt-4">
+            Add your first integration
+          </Button>
+        </Card>
+      )}
     </div>
   );
 }

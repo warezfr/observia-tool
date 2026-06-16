@@ -13,7 +13,7 @@ import { statusVariant, titleCase } from '../lib/status';
 import type { Analysis, AnalysisCreate, AnalysisType, AnalysisStatus } from '../types';
 
 const STATUS_OPTIONS: AnalysisStatus[] = ['queued', 'running', 'completed', 'failed'];
-const TYPE_OPTIONS: AnalysisType[] = ['performance', 'availability', 'security', 'cost'];
+const TYPE_OPTIONS: AnalysisType[] = ['performance', 'availability', 'security', 'cost', 'reliability'];
 
 const inputClass =
   'w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-accent-ring focus:border-accent';

@@ -25,6 +25,17 @@ class AIProviderCreate(AIProviderBase):
     extra_config: dict = {}
 
 
+class AIProviderUpdate(BaseModel):
+    name: str | None = None
+    provider_type: AIProviderType | None = None
+    model: str | None = None
+    api_key: str | None = None
+    endpoint: str | None = None
+    extra_config: dict | None = None
+    is_default: bool | None = None
+    fallback_order: int | None = None
+
+
 class AIProviderResponse(BaseModel):
     id: int
     name: str

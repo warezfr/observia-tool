@@ -18,7 +18,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 
-app = FastAPI(title="Observia - Dynatrace AI Analysis Platform", version="0.1.0")
+app = FastAPI(title="Observia - Dynatrace AI Analysis Platform", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,

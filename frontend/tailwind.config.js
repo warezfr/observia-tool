@@ -11,6 +11,7 @@ export default {
         surface: withAlpha('--surface'),
         elevated: withAlpha('--elevated'),
         border: withAlpha('--border'),
+        'border-subtle': withAlpha('--border-subtle'),
         fg: {
           DEFAULT: withAlpha('--fg'),
           secondary: withAlpha('--fg-secondary'),
@@ -35,22 +36,30 @@ export default {
         },
       },
       borderRadius: {
-        lg: '8px',
-        xl: '12px',
-        '2xl': '16px',
+        DEFAULT: '10px',
+        sm: '6px',
+        md: '10px',
+        lg: '14px',
+        xl: '18px',
+        '2xl': '22px',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans: ['Geist Variable', 'Geist', 'system-ui', 'sans-serif'],
+        mono: ['Geist Mono Variable', 'Geist Mono', 'ui-monospace', 'monospace'],
+      },
+      letterSpacing: {
+        tightest: '-0.04em',
+        tighter: '-0.02em',
       },
       boxShadow: {
-        soft: '0 1px 2px rgb(var(--shadow) / 0.06), 0 1px 3px rgb(var(--shadow) / 0.08)',
-        card: '0 1px 2px rgb(var(--shadow) / 0.04), 0 4px 12px rgb(var(--shadow) / 0.08)',
-        pop: '0 8px 24px rgb(var(--shadow) / 0.12), 0 2px 6px rgb(var(--shadow) / 0.08)',
+        soft: '0 1px 2px rgb(var(--shadow) / 0.04), 0 1px 3px rgb(var(--shadow) / 0.06)',
+        card: '0 1px 3px rgb(var(--shadow) / 0.05), 0 8px 24px rgb(var(--shadow) / 0.06)',
+        pop: '0 4px 16px rgb(var(--shadow) / 0.08), 0 12px 40px rgb(var(--shadow) / 0.1)',
+        glow: '0 0 0 1px rgb(var(--accent-ring) / 0.5), 0 4px 20px rgb(var(--accent) / 0.15)',
       },
       animation: {
-        fadeIn: 'fadeIn 0.2s ease-out',
-        slideIn: 'slideIn 0.3s ease-out',
+        fadeIn: 'fadeIn 0.25s ease-out',
+        slideIn: 'slideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
         slideDown: 'slideDown 0.2s ease-out',
         shimmer: 'shimmer 1.5s infinite',
       },
@@ -60,11 +69,11 @@ export default {
           '100%': { opacity: '1' },
         },
         slideIn: {
-          '0%': { transform: 'translateY(-10px)', opacity: '0' },
+          '0%': { transform: 'translateY(8px)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
         },
         slideDown: {
-          '0%': { transform: 'translateY(-6px)', opacity: '0' },
+          '0%': { transform: 'translateY(-4px)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
         },
         shimmer: {

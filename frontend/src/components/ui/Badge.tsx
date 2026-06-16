@@ -20,16 +20,16 @@ interface BadgeProps {
 }
 
 const variantClasses: Record<BadgeVariant, string> = {
-  success: 'bg-success/12 text-success ring-1 ring-inset ring-success/25',
-  warning: 'bg-warning/12 text-warning ring-1 ring-inset ring-warning/25',
-  error: 'bg-error/12 text-error ring-1 ring-inset ring-error/25',
-  info: 'bg-info/12 text-info ring-1 ring-inset ring-info/25',
-  accent: 'bg-accent-soft text-accent ring-1 ring-inset ring-accent-ring',
-  default: 'bg-fg/5 text-fg-secondary ring-1 ring-inset ring-border',
-  critical: 'bg-severity-critical/12 text-severity-critical ring-1 ring-inset ring-severity-critical/25',
-  high: 'bg-severity-high/12 text-severity-high ring-1 ring-inset ring-severity-high/25',
-  medium: 'bg-severity-medium/12 text-severity-medium ring-1 ring-inset ring-severity-medium/25',
-  low: 'bg-severity-low/12 text-severity-low ring-1 ring-inset ring-severity-low/25',
+  success: 'bg-success/10 text-success ring-1 ring-inset ring-success/20',
+  warning: 'bg-warning/10 text-warning ring-1 ring-inset ring-warning/20',
+  error: 'bg-error/10 text-error ring-1 ring-inset ring-error/20',
+  info: 'bg-info/10 text-info ring-1 ring-inset ring-info/20',
+  accent: 'bg-accent-soft text-accent ring-1 ring-inset ring-accent-ring/50',
+  default: 'bg-fg/[0.04] text-fg-secondary ring-1 ring-inset ring-border',
+  critical: 'bg-severity-critical/10 text-severity-critical ring-1 ring-inset ring-severity-critical/20',
+  high: 'bg-severity-high/10 text-severity-high ring-1 ring-inset ring-severity-high/20',
+  medium: 'bg-severity-medium/10 text-severity-medium ring-1 ring-inset ring-severity-medium/20',
+  low: 'bg-severity-low/10 text-severity-low ring-1 ring-inset ring-severity-low/20',
 };
 
 const dotClasses: Record<BadgeVariant, string> = {
@@ -53,9 +53,13 @@ export default function Badge({
 }: BadgeProps) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium capitalize ${variantClasses[variant]} ${className}`}
+      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[5px] text-[11px] font-semibold uppercase tracking-wide ${variantClasses[variant]} ${className}`}
     >
-      {dot && <span className={`h-1.5 w-1.5 rounded-full ${dotClasses[variant]}`} />}
+      {dot && (
+        <span
+          className={`h-1.5 w-1.5 rounded-full ${dotClasses[variant]} ${variant === 'info' || variant === 'accent' ? 'animate-pulse' : ''}`}
+        />
+      )}
       {children}
     </span>
   );

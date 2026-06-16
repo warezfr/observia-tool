@@ -11,6 +11,11 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:3000"]
     mcp_connection_timeout: int = 30
     mcp_max_retries: int = 3
+    cache_db_path: str = ".cache/observia-cache.db"
+    cache_default_ttl: int = 300
+    auth_enabled: bool = False
+    default_admin_username: str = "admin"
+    default_admin_password: str = "observia-admin"
 
 
 settings = Settings()

@@ -5,6 +5,7 @@ import re
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select
 from pydantic import BaseModel
@@ -12,7 +13,7 @@ from typing import Literal
 
 from app.core.metrics import metrics
 from app.db.database import AIProviderDB, AnalysisDB, RecommendationDB, get_db
-from app.db.repositories import AnalysisRepository
+from app.db.repositories import AnalysisRepository, ReportRepository
 from app.models.analysis import AnalysisResponse
 
 router = APIRouter()
@@ -30,6 +31,17 @@ class ReportResponse(BaseModel):
     format: str
     content: str
     include_raw_data: bool
+
+
+class ReportListItem(BaseModel):
+    id: int
+    analysis_id: int
+    format: str
+    include_raw_data: bool
+    created_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
 
 
 class ReportSummary(BaseModel):
@@ -52,6 +64,50 @@ class ProviderUsage(BaseModel):
     count: int
 
 
+def _extract_metric_signals(analysis) -> list[dict]:
+    """Extract a compact summary of metrics the agent collected.
+
+    Scans the analysis raw_data for query_metrics tool results and computes
+    min/max/avg/latest per metric series so reports can show real values
+    (Golden Signals) instead of only narrative text.
+    """
+    result = getattr(analysis, "result", None) or {}
+    if not isinstance(result, dict):
+        return []
+    raw_data = result.get("raw_data") or []
+    signals: list[dict] = []
+
+    for entry in raw_data:
+        if not isinstance(entry, dict) or entry.get("tool") != "query_metrics":
+            continue
+        payload = entry.get("result")
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except (json.JSONDecodeError, ValueError):
+                continue
+        if not isinstance(payload, dict):
+            continue
+        for series in payload.get("result", []) or []:
+            metric_id = series.get("metricId", "metric")
+            values: list[float] = []
+            for d in series.get("data", []) or []:
+                for v in d.get("values", []) or []:
+                    if isinstance(v, (int, float)):
+                        values.append(float(v))
+            if not values:
+                continue
+            signals.append({
+                "metric": metric_id,
+                "latest": round(values[-1], 3),
+                "min": round(min(values), 3),
+                "max": round(max(values), 3),
+                "avg": round(sum(values) / len(values), 3),
+                "points": len(values),
+            })
+    return signals
+
+
 def generate_json_report(analysis: AnalysisDB, recommendations: list, include_raw_data: bool) -> dict:
     """Generate a JSON format report."""
     report = {
@@ -60,6 +116,10 @@ def generate_json_report(analysis: AnalysisDB, recommendations: list, include_ra
         "status": analysis.status,
         "created_at": analysis.created_at.isoformat() if analysis.created_at else None,
         "completed_at": analysis.completed_at.isoformat() if analysis.completed_at else None,
+        "completeness": (analysis.result or {}).get("completeness")
+        if isinstance(getattr(analysis, "result", None), dict)
+        else None,
+        "metric_signals": _extract_metric_signals(analysis),
         "recommendations_count": len(recommendations),
         "recommendations": [
             {
@@ -92,9 +152,22 @@ def generate_markdown_report(analysis: AnalysisDB, recommendations: list, includ
         f"**Created:** {analysis.created_at.isoformat() if analysis.created_at else 'N/A'}",
         f"**Completed:** {analysis.completed_at.isoformat() if analysis.completed_at else 'In Progress'}",
         "",
-        "## Recommendations",
-        "",
     ]
+
+    signals = _extract_metric_signals(analysis)
+    if signals:
+        lines.append("## Golden Signals / Metrics")
+        lines.append("")
+        lines.append("| Metric | Latest | Avg | Min | Max | Points |")
+        lines.append("|---|---|---|---|---|---|")
+        for s in signals:
+            lines.append(
+                f"| {s['metric']} | {s['latest']} | {s['avg']} | {s['min']} | {s['max']} | {s['points']} |"
+            )
+        lines.append("")
+
+    lines.append("## Recommendations")
+    lines.append("")
 
     if not recommendations:
         lines.append("*No recommendations available.*")
@@ -335,6 +408,34 @@ def generate_html_report(analysis, recommendations: list, include_raw_data: bool
             f'<pre><code>{raw_json}</code></pre></details>'
         )
 
+    # Golden Signals / metrics table
+    signals = _extract_metric_signals(analysis)
+    signals_rows = "".join(
+        f"<tr><td>{esc(s['metric'])}</td><td>{s['latest']}</td><td>{s['avg']}</td>"
+        f"<td>{s['min']}</td><td>{s['max']}</td><td>{s['points']}</td></tr>"
+        for s in signals
+    )
+    signals_block = (
+        '<section class="card"><h2>Golden Signals / Metrics</h2>'
+        '<table class="metrics"><thead><tr><th>Metric</th><th>Latest</th>'
+        '<th>Avg</th><th>Min</th><th>Max</th><th>Points</th></tr></thead>'
+        f'<tbody>{signals_rows}</tbody></table></section>'
+        if signals
+        else ""
+    )
+
+    # Completeness banner (partial reports)
+    completeness = result.get("completeness") if isinstance(result, dict) else None
+    completeness_block = ""
+    if isinstance(completeness, dict) and not completeness.get("complete", True):
+        missing = ", ".join(completeness.get("missing", [])) or "required metrics"
+        completeness_block = (
+            '<section class="card" style="border-color:#D9770633">'
+            '<h2 style="color:#B45309">Partial report</h2>'
+            f'<p class="muted">Some required data could not be collected: '
+            f'<strong>{esc(missing)}</strong>. Findings may be incomplete.</p></section>'
+        )
+
     donut = _severity_donut_svg(counts)
     bars = _severity_bars_svg(counts)
     legend = _severity_legend(counts)
@@ -389,6 +490,9 @@ def generate_html_report(analysis, recommendations: list, include_raw_data: bool
   .chip {{ font-size:12px; font-weight:600; padding:2px 8px; border-radius:6px; text-transform:capitalize; }}
   .rec-meta {{ display:flex; gap:10px; align-items:center; margin:8px 0; font-size:13px; }}
   .tag {{ background:#0b10200d; border-radius:6px; padding:2px 8px; font-size:12px; text-transform:capitalize; }}
+  table.metrics {{ border-collapse:collapse; width:100%; font-size:13px; }}
+  table.metrics th, table.metrics td {{ border:1px solid var(--border); padding:6px 10px; text-align:left; }}
+  table.metrics th {{ background:#0b10200a; font-weight:600; }}
   .rec-section {{ margin-top:10px; }}
   .rec-label {{ font-size:12px; color:var(--fg-muted); margin-bottom:4px; }}
   pre {{ background:#0b10200a; border:1px solid var(--border); border-radius:8px; padding:12px;
@@ -424,11 +528,15 @@ def generate_html_report(analysis, recommendations: list, include_raw_data: bool
     </div>
   </section>
 
+  {completeness_block}
+
   <section class="card">
     <h2>Severity distribution</h2>
     <div class="charts">{donut}{bars}</div>
     {legend}
   </section>
+
+  {signals_block}
 
   <section class="card">
     <h2>Summary</h2>
@@ -579,11 +687,17 @@ async def generate_report(
     else:
         content = generate_markdown_report(analysis, recommendations, request.include_raw_data)
 
-    # Create a synthetic report ID (4-digit based on analysis_id)
-    report_id = request.analysis_id * 1000 + 1
+    # Persist the generated report so it can be retrieved / listed later.
+    report_repo = ReportRepository(db)
+    saved = await report_repo.create(
+        analysis_id=request.analysis_id,
+        fmt=request.format,
+        content=content,
+        include_raw_data=request.include_raw_data,
+    )
 
     return ReportResponse(
-        id=report_id,
+        id=saved.id,
         analysis_id=request.analysis_id,
         format=request.format,
         content=content,
@@ -591,11 +705,70 @@ async def generate_report(
     )
 
 
+def _html_to_pdf(html: str) -> bytes:
+    """Render a self-contained HTML string to PDF bytes using WeasyPrint."""
+    try:
+        from weasyprint import HTML  # type: ignore
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=503,
+            detail="PDF export unavailable: WeasyPrint is not installed in this deployment.",
+        ) from exc
+    return HTML(string=html).write_pdf()
+
+
+@router.get("/analysis/{analysis_id}/pdf")
+async def generate_pdf_report(
+    analysis_id: int,
+    include_raw_data: bool = Query(False),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate and download a PDF report for an analysis (rendered from HTML)."""
+    analysis_repo = AnalysisRepository(db)
+    analysis = await analysis_repo.get_by_id(analysis_id)
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+
+    result = await db.execute(
+        select(RecommendationDB).where(RecommendationDB.analysis_id == analysis_id)
+    )
+    recommendations = list(result.scalars().all())
+
+    html = generate_html_report(analysis, recommendations, include_raw_data)
+    pdf_bytes = _html_to_pdf(html)
+    metrics.increment("reports_generated")
+    filename = f"observia-report-{analysis_id}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/", response_model=list[ReportListItem])
+async def list_reports(
+    analysis_id: int | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """List previously generated reports (history), optionally by analysis."""
+    report_repo = ReportRepository(db)
+    return await report_repo.list(analysis_id=analysis_id)
+
+
 @router.get("/{report_id}", response_model=ReportResponse)
 async def get_report(
     report_id: int,
     db: AsyncSession = Depends(get_db),
 ):
-    """Get a generated report by ID."""
-    # For now, return 404 as reports are generated on-demand
-    raise HTTPException(status_code=404, detail="Report not found. Generate a report first.")
+    """Get a previously generated report by ID."""
+    report_repo = ReportRepository(db)
+    report = await report_repo.get_by_id(report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    return ReportResponse(
+        id=report.id,
+        analysis_id=report.analysis_id,
+        format=report.format,
+        content=report.content,
+        include_raw_data=report.include_raw_data,
+    )
