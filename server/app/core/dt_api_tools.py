@@ -1,9 +1,30 @@
 import json
 from dataclasses import dataclass
 from typing import Any
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse, urlunparse
 
 import httpx
+
+
+def normalize_classic_url(url: str) -> str:
+    """Return the classic Environment API base URL.
+
+    Dynatrace SaaS classic APIs live on *.live.dynatrace.com, while the platform
+    URL is *.apps.dynatrace.com. Managed/other URLs are returned as-is (trimmed).
+    """
+    u = (url or "").strip().rstrip("/")
+    parsed = urlparse(u)
+    if not parsed.scheme:
+        parsed = urlparse("https://" + u)
+
+    host = (parsed.hostname or "").lower()
+    if host.endswith(".apps.dynatrace.com"):
+        host = host.replace(".apps.dynatrace.com", ".live.dynatrace.com")
+
+    netloc = host
+    if parsed.port:
+        netloc = f"{host}:{parsed.port}"
+    return urlunparse((parsed.scheme or "https", netloc, "", "", "", ""))
 
 
 @dataclass

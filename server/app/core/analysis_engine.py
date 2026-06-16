@@ -1,7 +1,7 @@
 import logging
 from app.core.agent_executor import AgentExecutor, AgentResult
 from app.core.ai_orchestrator import AIOrchestrator, AIProviderConfig, AIProviderType
-from app.core.dt_api_tools import DynatraceApiToolProvider
+from app.core.dt_api_tools import DynatraceApiToolProvider, normalize_classic_url
 from app.core.mcp_client import MCPClient
 from app.core.metrics import metrics
 from app.core.recommendation_engine import RecommendationEngine
@@ -67,10 +67,15 @@ async def run_analysis(analysis_id: int) -> None:
                     )
                 )
             orchestrator = AIOrchestrator(providers=providers)
-            tools_client = None
-            if env.env_type == "managed":
-                tools_client = DynatraceApiToolProvider(base_url=env.url, api_token=token)
-            else:
+
+            # Tool provider selection:
+            # - SaaS WITH a platform token (dt0s) -> official Dynatrace MCP (Grail/DQL).
+            # - SaaS WITHOUT a platform token (only a classic dt0c token) -> direct
+            #   Environment API v2 on the *.live host (MCP would otherwise require
+            #   interactive OAuth, which cannot run headless in the container).
+            # - Managed -> direct Environment API v2 on the cluster URL.
+            use_mcp = env.env_type == "saas" and bool(platform_token)
+            if use_mcp:
                 tools_client = MCPClient(
                     url=env.url,
                     token=token,
@@ -78,6 +83,11 @@ async def run_analysis(analysis_id: int) -> None:
                     env_type=env.env_type,
                 )
                 await tools_client.connect()
+                logger.info("Using Dynatrace MCP tool provider")
+            else:
+                base_url = normalize_classic_url(env.url) if env.env_type == "saas" else env.url
+                tools_client = DynatraceApiToolProvider(base_url=base_url, api_token=token)
+                logger.info(f"Using Dynatrace Environment API tool provider at {base_url}")
 
             plugin = get_plugin(analysis.analysis_type)
             ctx = AnalysisContext(
