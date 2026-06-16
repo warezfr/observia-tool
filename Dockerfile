@@ -22,6 +22,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     supervisor \
     python3 \
     python3-pip \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libgdk-pixbuf-2.0-0 \
+    libffi8 \
+    libcairo2 \
+    libharfbuzz0b \
+    shared-mime-info \
     && rm -rf /var/lib/apt/lists/* \
     && rm -f /etc/nginx/sites-enabled/default
 
