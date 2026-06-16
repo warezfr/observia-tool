@@ -85,7 +85,7 @@ class MCPClient:
             # Use official Dynatrace MCP server package
             package = "@dynatrace-oss/dynatrace-mcp-server@latest"
 
-            platform_url = _normalize_platform_url(self.url)
+            platform_url = _normalize_platform_url(self.url) if self.env_type == "saas" else self.url.strip().rstrip("/")
             env: dict[str, str] = {
                 "DT_ENVIRONMENT": platform_url,
                 # Ensure node is discoverable for scripts using /usr/bin/env node

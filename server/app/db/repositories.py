@@ -89,6 +89,14 @@ class AIProviderRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_by_type(self, provider_type: str) -> list[AIProviderDB]:
+        result = await self.db.execute(
+            select(AIProviderDB)
+            .where(AIProviderDB.provider_type == provider_type)
+            .order_by(AIProviderDB.fallback_order)
+        )
+        return list(result.scalars().all())
+
     def get_api_key(self, provider: AIProviderDB) -> str | None:
         from app.core.security import decrypt_value
         if not provider.api_key_encrypted:
@@ -160,10 +168,27 @@ class AnalysisRepository:
         )
         await self.db.commit()
 
+    async def update_progress(self, analysis_id: int, reasoning_steps: list[dict]) -> None:
+        """Update live progress without changing status/completed_at."""
+        await self.db.execute(
+            update(AnalysisDB)
+            .where(AnalysisDB.id == analysis_id)
+            .values(reasoning_steps=reasoning_steps)
+        )
+        await self.db.commit()
+
 
 class RecommendationRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    async def get_by_analysis_id(self, analysis_id: int) -> list[RecommendationDB]:
+        result = await self.db.execute(
+            select(RecommendationDB)
+            .where(RecommendationDB.analysis_id == analysis_id)
+            .order_by(RecommendationDB.created_at.desc())
+        )
+        return list(result.scalars().all())
 
     async def delete_by_analysis_id(self, analysis_id: int) -> int:
         """Delete all recommendations for a given analysis."""

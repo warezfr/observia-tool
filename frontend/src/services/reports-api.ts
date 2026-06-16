@@ -20,6 +20,20 @@ export interface ProviderUsage {
   count: number;
 }
 
+export interface ReportGenerateRequest {
+  analysis_id: number;
+  format: "json" | "markdown";
+  include_raw_data?: boolean;
+}
+
+export interface ReportGenerateResponse {
+  id: number;
+  analysis_id: number;
+  format: string;
+  content: string;
+  include_raw_data: boolean;
+}
+
 const client = axios.create({ baseURL: '/api/v1' });
 
 export const reportsApi = {
@@ -33,6 +47,10 @@ export const reportsApi = {
   },
   getProviderUsage: async (days: number = 30): Promise<ProviderUsage[]> => {
     const { data } = await client.get('/reports/analytics', { params: { days, type: 'providers' } });
+    return data;
+  },
+  generate: async (req: ReportGenerateRequest): Promise<ReportGenerateResponse> => {
+    const { data } = await client.post('/reports/generate', req);
     return data;
   },
 };

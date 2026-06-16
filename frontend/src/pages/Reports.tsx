@@ -3,15 +3,16 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import AnalyticsCharts from '../components/Charts/AnalyticsCharts';
+import type { ChartData, ProviderUsage } from '../services/reports-api';
 import { reportsApi, ReportSummary } from '../services/reports-api';
-import { Download, FileText } from 'lucide-react';
+import { Download } from 'lucide-react';
 
 export default function Reports() {
   const [days, setDays] = useState(30);
   const [summary, setSummary] = useState<ReportSummary | null>(null);
   const [loading, setLoading] = useState(false);
-  const [timelineData, setTimelineData] = useState([]);
-  const [providerData, setProviderData] = useState([]);
+  const [timelineData, setTimelineData] = useState<ChartData[]>([]);
+  const [providerData, setProviderData] = useState<ProviderUsage[]>([]);
 
   useEffect(() => {
     const fetch = async () => {
@@ -43,6 +44,27 @@ export default function Reports() {
     { name: 'Running', value: Math.max(0, summary.total_analyses - summary.completed - summary.failed) },
   ];
 
+  const handleExport = () => {
+    const payload = {
+      days,
+      generated_at: new Date().toISOString(),
+      summary,
+      timeline: timelineData,
+      providers: providerData,
+      status: statusData,
+    };
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `observia-reports-${days}d-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -60,7 +82,7 @@ export default function Reports() {
             <option value={30}>Last 30 days</option>
             <option value={90}>Last 90 days</option>
           </select>
-          <Button className="flex items-center gap-2">
+          <Button className="flex items-center gap-2" onClick={handleExport}>
             <Download size={18} />
             Export
           </Button>

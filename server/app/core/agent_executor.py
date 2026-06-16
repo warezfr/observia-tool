@@ -1,6 +1,7 @@
 import json
 import logging
 from dataclasses import dataclass, field
+from typing import Awaitable, Callable
 
 from app.core.ai_orchestrator import AIOrchestrator
 from app.core.mcp_client import MCPClient
@@ -32,6 +33,7 @@ class AgentExecutor:
     """Execute AI agent with MCP tools access."""
     orchestrator: AIOrchestrator
     mcp_client: MCPClient
+    on_step: Callable[[list["ReasoningStep"]], Awaitable[None]] | None = None
 
     async def run(self, system_prompt: str, user_prompt: str) -> AgentResult:
         """Run agent with MCP tools until completion or max iterations."""
@@ -85,6 +87,8 @@ class AgentExecutor:
                     tool_name=tool_name,
                     tool_args=tool_args,
                 ))
+                if self.on_step:
+                    await self.on_step(reasoning_steps)
 
                 tool_result = await self.mcp_client.call_tool(tool_name, tool_args)
                 result_str = json.dumps(tool_result) if not isinstance(tool_result, str) else tool_result
@@ -95,6 +99,8 @@ class AgentExecutor:
                     content=result_str[:2000],
                     tool_name=tool_name,
                 ))
+                if self.on_step:
+                    await self.on_step(reasoning_steps)
 
                 messages.append({
                     "role": "tool",

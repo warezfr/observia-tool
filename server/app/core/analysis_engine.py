@@ -1,7 +1,9 @@
 import logging
 from app.core.agent_executor import AgentExecutor, AgentResult
 from app.core.ai_orchestrator import AIOrchestrator, AIProviderConfig, AIProviderType
+from app.core.dt_api_tools import DynatraceApiToolProvider
 from app.core.mcp_client import MCPClient
+from app.core.metrics import metrics
 from app.core.recommendation_engine import RecommendationEngine
 from app.db.database import AsyncSessionLocal, RecommendationDB
 from app.db.repositories import EnvironmentRepository, AIProviderRepository, AnalysisRepository
@@ -26,6 +28,7 @@ async def run_analysis(analysis_id: int) -> None:
             logger.error(f"Analysis {analysis_id} not found")
             return
 
+        metrics.increment("analysis_total")
         await analysis_repo.update_status(analysis_id, AnalysisStatus.RUNNING)
 
         try:
@@ -40,22 +43,41 @@ async def run_analysis(analysis_id: int) -> None:
             platform_token = env_repo.get_platform_token(env)
             api_key = provider_repo.get_api_key(provider_db)
 
-            provider_config = AIProviderConfig(
+            selected_provider = AIProviderConfig(
                 provider_type=AIProviderType(provider_db.provider_type),
                 model=provider_db.model,
                 api_key=api_key,
                 endpoint=provider_db.endpoint,
                 extra_config=provider_db.extra_config or {},
             )
-            orchestrator = AIOrchestrator(providers=[provider_config])
-            mcp_client = MCPClient(
-                url=env.url,
-                token=token,
-                platform_token=platform_token,
-                env_type=env.env_type,
-            )
 
-            await mcp_client.connect()
+            # Build fallback chain: selected provider first, then others by fallback_order.
+            all_providers_db = await provider_repo.get_all()
+            providers: list[AIProviderConfig] = [selected_provider]
+            for p in all_providers_db:
+                if p.id == provider_db.id:
+                    continue
+                providers.append(
+                    AIProviderConfig(
+                        provider_type=AIProviderType(p.provider_type),
+                        model=p.model,
+                        api_key=provider_repo.get_api_key(p),
+                        endpoint=p.endpoint,
+                        extra_config=p.extra_config or {},
+                    )
+                )
+            orchestrator = AIOrchestrator(providers=providers)
+            tools_client = None
+            if env.env_type == "managed":
+                tools_client = DynatraceApiToolProvider(base_url=env.url, api_token=token)
+            else:
+                tools_client = MCPClient(
+                    url=env.url,
+                    token=token,
+                    platform_token=platform_token,
+                    env_type=env.env_type,
+                )
+                await tools_client.connect()
 
             plugin = get_plugin(analysis.analysis_type)
             ctx = AnalysisContext(
@@ -66,7 +88,13 @@ async def run_analysis(analysis_id: int) -> None:
             )
             system_prompt, user_prompt = plugin.build_prompts(ctx)
 
-            executor = AgentExecutor(orchestrator=orchestrator, mcp_client=mcp_client)
+            async def _on_step(steps):
+                await analysis_repo.update_progress(
+                    analysis_id,
+                    [{"type": s.step_type, "content": s.content, "tool": s.tool_name} for s in steps],
+                )
+
+            executor = AgentExecutor(orchestrator=orchestrator, mcp_client=tools_client, on_step=_on_step)
             agent_result: AgentResult = await executor.run(system_prompt, user_prompt)
 
             rec_engine = RecommendationEngine(orchestrator=orchestrator)
@@ -98,8 +126,10 @@ async def run_analysis(analysis_id: int) -> None:
                     for s in agent_result.reasoning_steps
                 ],
             )
-            await mcp_client.disconnect()
+            metrics.increment("analysis_completed")
+            await tools_client.disconnect()
 
         except Exception as e:
             logger.exception(f"Analysis {analysis_id} failed: {e}")
             await analysis_repo.update_status(analysis_id, AnalysisStatus.FAILED, error_message=str(e))
+            metrics.increment("analysis_failed")
