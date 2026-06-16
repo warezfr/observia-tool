@@ -2,6 +2,7 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import urlparse, urlunparse
 
 logger = logging.getLogger(__name__)
 
@@ -49,19 +50,60 @@ class MCPClient:
     async def _connect_mcp(self) -> dict:
         """Internal method to connect to MCP server via stdio.
 
-        Note: Current implementation uses npx for development.
-        In production, use pre-installed package:
-            command="dynatrace-mcp"  # or "dynatrace-managed-mcp"
+        Uses the Dynatrace MCP server via npx (stdio).
+
+        Dynatrace distinguishes between:
+        - Platform URL: https://<env>.apps.dynatrace.com (platform services / MCP server)
+        - Classic environment URL: https://<env>.live.dynatrace.com (classic environment APIs)
+
+        The Dynatrace MCP server expects the Platform URL (apps.*).
         """
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.stdio import stdio_client
 
+        def _normalize_platform_url(url: str) -> str:
+            # Trim whitespace and trailing slash
+            u = url.strip().rstrip("/")
+            parsed = urlparse(u)
+            if not parsed.scheme:
+                # assume https if user entered host only
+                parsed = urlparse("https://" + u)
+
+            host = (parsed.hostname or "").lower()
+            if host.endswith(".live.dynatrace.com"):
+                host = host.replace(".live.dynatrace.com", ".apps.dynatrace.com")
+
+            # preserve explicit port if present
+            netloc = host
+            if parsed.port:
+                netloc = f"{host}:{parsed.port}"
+
+            return urlunparse((parsed.scheme, netloc, "", "", "", ""))
+
         try:
-            package = "dynatrace-mcp" if self.env_type == "saas" else "dynatrace-managed-mcp"
+            # Use official Dynatrace MCP server package
+            package = "@dynatrace-oss/dynatrace-mcp-server@latest"
+
+            platform_url = _normalize_platform_url(self.url)
+            env: dict[str, str] = {
+                "DT_ENVIRONMENT": platform_url,
+                # Ensure node is discoverable for scripts using /usr/bin/env node
+                "PATH": "/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin",
+            }
+            # Token routing:
+            # - dt0s16.* platform tokens → DT_PLATFORM_TOKEN
+            # - dt0c01.* classic API tokens → DT_API_TOKEN
+            token = (self.token or "").strip()
+            if token.startswith("dt0s"):
+                env["DT_PLATFORM_TOKEN"] = token
+            else:
+                env["DT_API_TOKEN"] = token
+
             server_params = StdioServerParameters(
-                command="npx",
-                args=[f"@dynatrace-oss/{package}"],
-                env={"DT_URL": self.url, "DT_TOKEN": self.token},
+                # Use absolute path to avoid PATH issues under supervisor/uvicorn
+                command="/usr/local/bin/npx",
+                args=["-y", package],
+                env=env,
             )
 
             # Use context manager to properly manage stdio streams lifecycle

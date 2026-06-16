@@ -28,8 +28,9 @@ export default function Environments() {
     try {
       const result = await testConnection(id);
       setTestResults(prev => ({ ...prev, [id]: `Connected (${result.available_tools} tools)` }));
-    } catch {
-      setTestResults(prev => ({ ...prev, [id]: 'Connection failed' }));
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail;
+      setTestResults(prev => ({ ...prev, [id]: typeof detail === 'string' ? detail : 'Connection failed' }));
     }
   };
 

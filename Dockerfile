@@ -11,20 +11,23 @@ ENV VITE_API_URL=
 RUN npm run build
 
 # Stage 2: Unified runtime (nginx + backend)
-FROM python:3.11-slim
+#
+# NOTE: Dynatrace MCP server currently requires Node >= 22.5 (undici v8+).
+# Use a Node 22 base image for runtime and install Python + nginx + supervisor.
+FROM node:22-bookworm-slim
 
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     nginx \
     supervisor \
-    nodejs \
-    npm \
+    python3 \
+    python3-pip \
     && rm -rf /var/lib/apt/lists/* \
     && rm -f /etc/nginx/sites-enabled/default
 
 COPY server/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip3 install --break-system-packages --no-cache-dir -r requirements.txt
 
 COPY server/app/ ./app/
 
