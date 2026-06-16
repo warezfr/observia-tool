@@ -8,6 +8,7 @@ interface AIProvidersContextValue {
   fetchProviders: () => Promise<void>;
   createProvider: (data: AIProviderCreate) => Promise<AIProvider>;
   deleteProvider: (id: number) => Promise<void>;
+  detectModels: (data: { endpoint: string; api_key: string }) => Promise<{ models: string[] }>;
 }
 
 const AIProvidersContext = createContext<AIProvidersContextValue | null>(null);
@@ -36,8 +37,12 @@ export function AIProvidersProvider({ children }: { children: ReactNode }) {
     setProviders(prev => prev.filter(p => p.id !== id));
   }, []);
 
+  const detectModels = useCallback(async (data: { endpoint: string; api_key: string }) => {
+    return await aiProvidersApi.detectModels(data);
+  }, []);
+
   return (
-    <AIProvidersContext.Provider value={{ providers, loading, fetchProviders, createProvider, deleteProvider }}>
+    <AIProvidersContext.Provider value={{ providers, loading, fetchProviders, createProvider, deleteProvider, detectModels }}>
       {children}
     </AIProvidersContext.Provider>
   );

@@ -25,6 +25,7 @@ class MCPClient:
     """
     url: str
     token: str
+    platform_token: str | None = None
     env_type: str  # "saas" or "managed"
     timeout: int = 30
     max_retries: int = 3
@@ -89,15 +90,21 @@ class MCPClient:
                 "DT_ENVIRONMENT": platform_url,
                 # Ensure node is discoverable for scripts using /usr/bin/env node
                 "PATH": "/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin",
+                # Headless/container friendly token storage
+                "DT_MCP_TOKEN_STORAGE": "file",
+                "HOME": "/app/data",
+                "XDG_CONFIG_HOME": "/app/data/.config",
             }
             # Token routing:
             # - dt0s16.* platform tokens → DT_PLATFORM_TOKEN
             # - dt0c01.* classic API tokens → DT_API_TOKEN
-            token = (self.token or "").strip()
-            if token.startswith("dt0s"):
-                env["DT_PLATFORM_TOKEN"] = token
-            else:
-                env["DT_API_TOKEN"] = token
+            api_token = (self.token or "").strip()
+            if api_token:
+                env["DT_API_TOKEN"] = api_token
+
+            plat = (self.platform_token or "").strip() if self.platform_token else ""
+            if plat:
+                env["DT_PLATFORM_TOKEN"] = plat
 
             server_params = StdioServerParameters(
                 # Use absolute path to avoid PATH issues under supervisor/uvicorn
@@ -177,7 +184,9 @@ class MCPClient:
         return await self.connect()
 
     @classmethod
-    async def get_from_pool(cls, url: str, token: str, env_type: str) -> "MCPClient":
+    async def get_from_pool(
+        cls, url: str, token: str, env_type: str, platform_token: str | None = None
+    ) -> "MCPClient":
         """Get or create an MCPClient from the connection pool.
 
         Args:
@@ -194,7 +203,7 @@ class MCPClient:
                 logger.debug(f"Reusing pooled MCP connection for {url}")
                 return client
 
-            client = cls(url=url, token=token, env_type=env_type)
+            client = cls(url=url, token=token, platform_token=platform_token, env_type=env_type)
             _connection_pool[url] = client
             logger.debug(f"Created new MCP connection for {url}")
             return client

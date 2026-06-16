@@ -10,8 +10,8 @@ const TYPE_OPTIONS: AnalysisType[] = ['performance', 'availability', 'security',
 
 export default function Analyses() {
   const { analyses, loading, fetchAnalyses, createAnalysis, deleteAnalysis } = useAnalyses();
-  const { environments } = useEnvironments();
-  const { providers } = useAIProviders();
+  const { environments, fetchEnvironments } = useEnvironments();
+  const { providers, fetchProviders } = useAIProviders();
   const navigate = useNavigate();
 
   const [showForm, setShowForm] = useState(false);
@@ -29,6 +29,12 @@ export default function Analyses() {
   useEffect(() => {
     fetchAnalyses({ status: statusFilter || undefined, type: typeFilter || undefined });
   }, [fetchAnalyses, statusFilter, typeFilter]);
+
+  useEffect(() => {
+    // Ensure dropdowns have data even if user didn't visit those pages first.
+    fetchEnvironments();
+    fetchProviders();
+  }, [fetchEnvironments, fetchProviders]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

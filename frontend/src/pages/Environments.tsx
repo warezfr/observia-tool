@@ -5,7 +5,7 @@ import type { EnvironmentCreate, EnvironmentType } from '../types';
 export default function Environments() {
   const { environments, loading, fetchEnvironments, createEnvironment, deleteEnvironment, testConnection } = useEnvironments();
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState<EnvironmentCreate>({ name: '', url: '', token: '', env_type: 'saas' });
+  const [form, setForm] = useState<EnvironmentCreate>({ name: '', url: '', token: '', platform_token: '', env_type: 'saas' });
   const [testResults, setTestResults] = useState<Record<number, string>>({});
   const [error, setError] = useState('');
 
@@ -17,7 +17,7 @@ export default function Environments() {
     try {
       await createEnvironment(form);
       setShowForm(false);
-      setForm({ name: '', url: '', token: '', env_type: 'saas' });
+      setForm({ name: '', url: '', token: '', platform_token: '', env_type: 'saas' });
     } catch {
       setError('Failed to create environment. Check your details.');
     }
@@ -27,7 +27,7 @@ export default function Environments() {
     setTestResults(prev => ({ ...prev, [id]: 'testing...' }));
     try {
       const result = await testConnection(id);
-      setTestResults(prev => ({ ...prev, [id]: `Connected (${result.available_tools} tools)` }));
+      setTestResults(prev => ({ ...prev, [id]: `Connected${result.mode ? ` (${result.mode})` : ''}` }));
     } catch (e: any) {
       const detail = e?.response?.data?.detail;
       setTestResults(prev => ({ ...prev, [id]: typeof detail === 'string' ? detail : 'Connection failed' }));
@@ -53,6 +53,13 @@ export default function Environments() {
           <input required type="password" placeholder="API Token" value={form.token}
             onChange={e => setForm(f => ({ ...f, token: e.target.value }))}
             className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-purple-500" />
+          <input
+            type="password"
+            placeholder="Platform Token (dt0s...) — requis pour MCP en container"
+            value={form.platform_token ?? ''}
+            onChange={e => setForm(f => ({ ...f, platform_token: e.target.value }))}
+            className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-purple-500"
+          />
           <select value={form.env_type} onChange={e => setForm(f => ({ ...f, env_type: e.target.value as EnvironmentType }))}
             className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-purple-500">
             <option value="saas">SaaS</option>

@@ -12,9 +12,8 @@ RUN npm run build
 
 # Stage 2: Unified runtime (nginx + backend)
 #
-# NOTE: Dynatrace MCP server currently requires Node >= 22.5 (undici v8+).
-# Use a Node 22 base image for runtime and install Python + nginx + supervisor.
-FROM node:22-bookworm-slim
+# NOTE: Dynatrace MCP server requires Node v24+ (per upstream docs).
+FROM node:24-bookworm-slim
 
 WORKDIR /app
 

@@ -16,13 +16,15 @@ export const environmentsApi = {
   list: () => client.get<Environment[]>('/environments/').then(r => r.data),
   create: (data: EnvironmentCreate) => client.post<Environment>('/environments/', data).then(r => r.data),
   delete: (id: number) => client.delete(`/environments/${id}`),
-  testConnection: (id: number) => client.post<{ status: string; available_tools: number }>(`/environments/${id}/test-connection`).then(r => r.data),
+  testConnection: (id: number) => client.post<{ status: string; mode?: string; endpoint?: string }>(`/environments/${id}/test-connection`).then(r => r.data),
 };
 
 export const aiProvidersApi = {
   list: () => client.get<AIProvider[]>('/ai-providers/').then(r => r.data),
   create: (data: AIProviderCreate) => client.post<AIProvider>('/ai-providers/', data).then(r => r.data),
   delete: (id: number) => client.delete(`/ai-providers/${id}`),
+  detectModels: (data: { endpoint: string; api_key: string }) =>
+    client.post<{ models: string[] }>('/ai-providers/detect-models', data).then(r => r.data),
 };
 
 export const analysesApi = {

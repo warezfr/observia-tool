@@ -19,6 +19,9 @@ class EnvironmentRepository:
             url=str(data.url),
             env_type=data.env_type.value,
             token_encrypted=encrypt_value(data.token),
+            platform_token_encrypted=encrypt_value(data.platform_token)
+            if data.platform_token
+            else None,
         )
         self.db.add(obj)
         await self.db.commit()
@@ -41,6 +44,12 @@ class EnvironmentRepository:
     def get_token(self, env: EnvironmentDB) -> str:
         from app.core.security import decrypt_value
         return decrypt_value(env.token_encrypted)
+
+    def get_platform_token(self, env: EnvironmentDB) -> str | None:
+        from app.core.security import decrypt_value
+        if not getattr(env, "platform_token_encrypted", None):
+            return None
+        return decrypt_value(env.platform_token_encrypted)
 
 
 class AIProviderRepository:
