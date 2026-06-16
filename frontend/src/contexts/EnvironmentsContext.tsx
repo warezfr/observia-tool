@@ -8,7 +8,7 @@ interface EnvironmentsContextValue {
   fetchEnvironments: () => Promise<void>;
   createEnvironment: (data: EnvironmentCreate) => Promise<Environment>;
   deleteEnvironment: (id: number) => Promise<void>;
-  testConnection: (id: number) => Promise<{ status: string; available_tools: number }>;
+  testConnection: (id: number) => Promise<{ status: string; mode?: string; endpoint?: string }>;
 }
 
 const EnvironmentsContext = createContext<EnvironmentsContextValue | null>(null);

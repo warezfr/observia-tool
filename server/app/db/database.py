@@ -20,6 +20,7 @@ class EnvironmentDB(Base):
     url = Column(String(1024), nullable=False)
     env_type = Column(String(20), nullable=False)
     token_encrypted = Column(Text, nullable=False)
+    platform_token_encrypted = Column(Text, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -73,6 +74,17 @@ class RecommendationDB(Base):
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Lightweight migration: add platform_token_encrypted column if missing.
+        try:
+            result = await conn.exec_driver_sql("PRAGMA table_info(environments)")
+            cols = [row[1] for row in result.fetchall()]
+            if "platform_token_encrypted" not in cols:
+                await conn.exec_driver_sql(
+                    "ALTER TABLE environments ADD COLUMN platform_token_encrypted TEXT"
+                )
+        except Exception:
+            # Best-effort; create_all() covers fresh installs.
+            pass
 
 
 async def get_db():

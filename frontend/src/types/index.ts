@@ -1,10 +1,16 @@
-export type EnvironmentType = 'saas' | 'managed';
-export type AnalysisType = 'performance' | 'availability' | 'security' | 'cost';
-export type AnalysisStatus = 'queued' | 'running' | 'completed' | 'failed';
-export type RecommendationLevel = 'descriptive' | 'prescriptive' | 'script';
-export type RecommendationSeverity = 'critical' | 'high' | 'medium' | 'low';
-export type RecommendationStatus = 'new' | 'acknowledged' | 'resolved';
-export type AIProviderType = 'openai' | 'anthropic' | 'gemini' | 'azure_openai' | 'aws_bedrock' | 'ollama';
+export type EnvironmentType = "saas" | "managed";
+export type AnalysisType = "performance" | "availability" | "security" | "cost";
+export type AnalysisStatus = "queued" | "running" | "completed" | "failed";
+export type RecommendationLevel = "descriptive" | "prescriptive" | "script";
+export type RecommendationSeverity = "critical" | "high" | "medium" | "low";
+export type RecommendationStatus = "new" | "acknowledged" | "resolved";
+export type AIProviderType =
+  | "openai"
+  | "anthropic"
+  | "gemini"
+  | "azure_openai"
+  | "aws_bedrock"
+  | "ollama";
 
 export interface Environment {
   id: number;
@@ -17,6 +23,7 @@ export interface EnvironmentCreate {
   name: string;
   url: string;
   token: string;
+  platform_token?: string;
   env_type: EnvironmentType;
 }
 
@@ -35,6 +42,7 @@ export interface AIProviderCreate {
   model: string;
   api_key?: string;
   endpoint?: string;
+  extra_config?: Record<string, unknown>;
   is_default: boolean;
   fallback_order: number;
 }

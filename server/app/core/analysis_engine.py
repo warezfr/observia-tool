@@ -3,19 +3,20 @@ from app.core.agent_executor import AgentExecutor, AgentResult
 from app.core.ai_orchestrator import AIOrchestrator, AIProviderConfig, AIProviderType
 from app.core.mcp_client import MCPClient
 from app.core.recommendation_engine import RecommendationEngine
-from app.db.database import engine, RecommendationDB
+from app.db.database import AsyncSessionLocal, RecommendationDB
 from app.db.repositories import EnvironmentRepository, AIProviderRepository, AnalysisRepository
 from app.models.analysis import AnalysisStatus
 from app.plugins import get_plugin
 from app.plugins.base import AnalysisContext
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
 
 async def run_analysis(analysis_id: int) -> None:
     """Execute a complete analysis workflow."""
-    async with AsyncSession(engine) as db:
+    # Use the app's sessionmaker (expire_on_commit=False) to avoid attribute
+    # expiration/lazy-load IO that can trigger MissingGreenlet in background tasks.
+    async with AsyncSessionLocal() as db:
         env_repo = EnvironmentRepository(db)
         provider_repo = AIProviderRepository(db)
         analysis_repo = AnalysisRepository(db)
@@ -28,10 +29,15 @@ async def run_analysis(analysis_id: int) -> None:
         await analysis_repo.update_status(analysis_id, AnalysisStatus.RUNNING)
 
         try:
-            env = await env_repo.get_by_id(analysis.environment_id)
-            provider_db = await provider_repo.get_by_id(analysis.ai_provider_id)
+            # Read IDs eagerly to avoid touching ORM attributes after commits.
+            environment_id = analysis.environment_id
+            ai_provider_id = analysis.ai_provider_id
+
+            env = await env_repo.get_by_id(environment_id)
+            provider_db = await provider_repo.get_by_id(ai_provider_id)
 
             token = env_repo.get_token(env)
+            platform_token = env_repo.get_platform_token(env)
             api_key = provider_repo.get_api_key(provider_db)
 
             provider_config = AIProviderConfig(
@@ -42,7 +48,12 @@ async def run_analysis(analysis_id: int) -> None:
                 extra_config=provider_db.extra_config or {},
             )
             orchestrator = AIOrchestrator(providers=[provider_config])
-            mcp_client = MCPClient(url=env.url, token=token, env_type=env.env_type)
+            mcp_client = MCPClient(
+                url=env.url,
+                token=token,
+                platform_token=platform_token,
+                env_type=env.env_type,
+            )
 
             await mcp_client.connect()
 

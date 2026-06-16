@@ -16,12 +16,14 @@ class EnvironmentBase(BaseModel):
 
 class EnvironmentCreate(EnvironmentBase):
     token: str
+    platform_token: str | None = None
 
 
 class EnvironmentUpdate(BaseModel):
     name: str | None = None
     url: str | None = None
     token: str | None = None
+    platform_token: str | None = None
     env_type: EnvironmentType | None = None
 
 

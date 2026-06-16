@@ -1,5 +1,5 @@
 import base64
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 from app.config import settings
 
 
@@ -16,7 +16,14 @@ def encrypt_value(value: str) -> str:
 
 def decrypt_value(encrypted: str) -> str:
     """Decrypt a Fernet-encrypted string."""
-    return _get_fernet().decrypt(encrypted.encode()).decode()
+    try:
+        return _get_fernet().decrypt(encrypted.encode()).decode()
+    except InvalidToken as e:
+        # Typically happens when SECRET_KEY changed after values were encrypted.
+        raise ValueError(
+            "Encrypted value cannot be decrypted with current SECRET_KEY. "
+            "If you rotated SECRET_KEY, re-save the token/API key."
+        ) from e
 
 
 def mask_token(token: str) -> str:
