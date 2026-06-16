@@ -10,7 +10,7 @@ import {
   Plug,
   PanelLeftClose,
   PanelLeftOpen,
-  LogOut,
+  Activity,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -22,14 +22,14 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { icon: <LayoutDashboard size={20} />, label: 'Dashboard', to: '/', category: 'main' },
-  { icon: <Database size={20} />, label: 'Environments', to: '/environments', category: 'main' },
-  { icon: <Bot size={20} />, label: 'AI Providers', to: '/ai-providers', category: 'main' },
-  { icon: <BarChart3 size={20} />, label: 'Analyses', to: '/analyses', category: 'tools' },
-  { icon: <FileText size={20} />, label: 'Reports', to: '/reports', category: 'tools' },
-  { icon: <Zap size={20} />, label: 'Automation', to: '/automation', category: 'tools' },
-  { icon: <Plug size={20} />, label: 'Integrations', to: '/integrations', category: 'system' },
-  { icon: <Settings size={20} />, label: 'Settings', to: '/settings', category: 'system' },
+  { icon: <LayoutDashboard size={19} />, label: 'Dashboard', to: '/', category: 'main' },
+  { icon: <Database size={19} />, label: 'Environments', to: '/environments', category: 'main' },
+  { icon: <Bot size={19} />, label: 'AI Providers', to: '/ai-providers', category: 'main' },
+  { icon: <BarChart3 size={19} />, label: 'Analyses', to: '/analyses', category: 'tools' },
+  { icon: <FileText size={19} />, label: 'Reports', to: '/reports', category: 'tools' },
+  { icon: <Zap size={19} />, label: 'Automation', to: '/automation', category: 'tools' },
+  { icon: <Plug size={19} />, label: 'Integrations', to: '/integrations', category: 'system' },
+  { icon: <Settings size={19} />, label: 'Settings', to: '/settings', category: 'system' },
 ];
 
 const categoryLabels: Record<NavItem['category'], string> = {
@@ -49,33 +49,53 @@ export default function Sidebar() {
 
   return (
     <aside
-      className={`bg-slate-950 border-r border-slate-800 flex flex-col transition-all duration-300 ${
-        collapsed ? 'w-20' : 'w-56'
+      className={`sticky top-0 h-screen shrink-0 bg-surface border-r border-border flex flex-col transition-all duration-300 ${
+        collapsed ? 'w-[68px]' : 'w-60'
       }`}
     >
-      <div className="p-4 border-b border-slate-800">
-        <div className="flex items-center justify-between">
-          {!collapsed && (
-            <h1 className="text-lg font-bold bg-gradient-to-r from-primary-400 to-secondary bg-clip-text text-transparent">
-              Observia
-            </h1>
+      <div className="h-16 px-4 flex items-center border-b border-border">
+        <div className="flex items-center justify-between w-full">
+          {!collapsed ? (
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-accent-fg shadow-soft">
+                <Activity size={18} />
+              </span>
+              <span className="text-base font-semibold tracking-tight text-fg">Observia</span>
+            </div>
+          ) : (
+            <span className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-accent-fg shadow-soft">
+              <Activity size={18} />
+            </span>
           )}
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-          </button>
+          {!collapsed && (
+            <button
+              onClick={() => setCollapsed(true)}
+              className="p-1.5 text-fg-muted hover:text-fg hover:bg-fg/5 rounded-lg transition-colors"
+              title="Collapse sidebar"
+              aria-label="Collapse sidebar"
+            >
+              <PanelLeftClose size={18} />
+            </button>
+          )}
         </div>
       </div>
+
+      {collapsed && (
+        <button
+          onClick={() => setCollapsed(false)}
+          className="mt-2 mx-auto p-1.5 text-fg-muted hover:text-fg hover:bg-fg/5 rounded-lg transition-colors"
+          title="Expand sidebar"
+          aria-label="Expand sidebar"
+        >
+          <PanelLeftOpen size={18} />
+        </button>
+      )}
 
       <nav className="flex-1 overflow-y-auto p-3 space-y-6">
         {Object.entries(categories).map(([key, items]) => (
           <div key={key} className="space-y-1">
             {!collapsed && (
-              <p className="px-3 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <p className="px-3 py-1 text-[11px] font-semibold text-fg-muted uppercase tracking-wider">
                 {categoryLabels[key as NavItem['category']]}
               </p>
             )}
@@ -86,21 +106,21 @@ export default function Sidebar() {
                   to={item.to}
                   end={item.to === '/'}
                   className={({ isActive }) =>
-                    `relative flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${
+                    `relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
                       isActive
-                        ? 'bg-primary-500/10 text-white'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                    }`
+                        ? 'bg-accent-soft text-accent font-medium'
+                        : 'text-fg-secondary hover:text-fg hover:bg-fg/5'
+                    } ${collapsed ? 'justify-center' : ''}`
                   }
                   title={collapsed ? item.label : undefined}
                 >
                   {({ isActive }) => (
                     <>
-                      {isActive && (
-                        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r bg-primary-400" />
+                      {isActive && !collapsed && (
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r bg-accent" />
                       )}
                       {item.icon}
-                      {!collapsed && <span className="text-sm">{item.label}</span>}
+                      {!collapsed && <span>{item.label}</span>}
                     </>
                   )}
                 </NavLink>
@@ -110,14 +130,22 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="p-3 border-t border-slate-800">
-        <button
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-          title={collapsed ? 'Logout' : undefined}
+      <div className="p-3 border-t border-border">
+        <div
+          className={`flex items-center gap-3 px-3 py-2 rounded-lg ${
+            collapsed ? 'justify-center' : ''
+          }`}
         >
-          <LogOut size={20} />
-          {!collapsed && <span className="text-sm">Logout</span>}
-        </button>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent text-sm font-semibold">
+            A
+          </span>
+          {!collapsed && (
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-fg">Admin</p>
+              <p className="truncate text-xs text-fg-muted">Self-hosted</p>
+            </div>
+          )}
+        </div>
       </div>
     </aside>
   );

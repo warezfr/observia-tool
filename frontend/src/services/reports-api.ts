@@ -22,7 +22,7 @@ export interface ProviderUsage {
 
 export interface ReportGenerateRequest {
   analysis_id: number;
-  format: "json" | "markdown";
+  format: "json" | "markdown" | "html";
   include_raw_data?: boolean;
 }
 

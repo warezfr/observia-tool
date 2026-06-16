@@ -14,9 +14,9 @@ interface ToastProps {
 }
 
 const typeClasses = {
-  success: 'bg-success/20 border-success/30 text-success',
-  error: 'bg-error/20 border-error/30 text-error',
-  info: 'bg-secondary/20 border-secondary/30 text-secondary',
+  success: 'bg-surface border-success/30 text-success',
+  error: 'bg-surface border-error/30 text-error',
+  info: 'bg-surface border-info/30 text-info',
 };
 
 export function Toast({ toast, onClose }: ToastProps) {
@@ -33,7 +33,7 @@ export function Toast({ toast, onClose }: ToastProps) {
 
   return (
     <div
-      className={`fixed bottom-4 right-4 flex items-center gap-3 px-4 py-3 rounded border transition-opacity ${
+      className={`fixed bottom-4 right-4 flex items-center gap-3 px-4 py-3 rounded-xl border shadow-pop transition-opacity ${
         typeClasses[toast.type]
       } ${isVisible ? 'opacity-100' : 'opacity-0'}`}
     >

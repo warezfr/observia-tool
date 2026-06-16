@@ -10,10 +10,9 @@ import {
   DollarSign,
   Activity,
   ArrowRight,
-  Inbox,
+  Sparkles,
 } from 'lucide-react';
 import {
-  ResponsiveContainer,
   BarChart,
   Bar,
   XAxis,
@@ -21,6 +20,8 @@ import {
   Tooltip,
   CartesianGrid,
   Cell,
+  PieChart,
+  Pie,
 } from 'recharts';
 import { useEnvironments } from '../contexts/EnvironmentsContext';
 import { useAIProviders } from '../contexts/AIProvidersContext';
@@ -28,7 +29,10 @@ import { useAnalyses } from '../contexts/AnalysesContext';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Skeleton from '../components/ui/Skeleton';
-import type { Analysis, AnalysisType, AnalysisStatus } from '../types';
+import ChartCard from '../components/Charts/ChartCard';
+import { useChartColors } from '../components/Charts/chartTheme';
+import { statusVariant } from '../lib/status';
+import type { Analysis, AnalysisType } from '../types';
 
 type ReactIcon = typeof Gauge;
 
@@ -37,13 +41,6 @@ const typeIcon: Record<AnalysisType, ReactIcon> = {
   availability: Activity,
   security: ShieldCheck,
   cost: DollarSign,
-};
-
-const statusBadge: Record<AnalysisStatus, { variant: 'success' | 'error' | 'info' | 'warning'; pulse?: boolean }> = {
-  completed: { variant: 'success' },
-  failed: { variant: 'error' },
-  running: { variant: 'info', pulse: true },
-  queued: { variant: 'warning' },
 };
 
 function StatCard({
@@ -63,14 +60,14 @@ function StatCard({
     <Card hoverable>
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-slate-400 text-sm mb-2">{label}</div>
+          <div className="text-fg-muted text-sm mb-2">{label}</div>
           {loading ? (
             <Skeleton className="h-8 w-12" />
           ) : (
-            <div className="text-3xl font-bold text-white">{value}</div>
+            <div className="text-3xl font-semibold text-fg">{value}</div>
           )}
         </div>
-        <div className={`p-3 rounded-lg ${accent}`}>
+        <div className={`p-3 rounded-xl ${accent}`}>
           <Icon size={22} />
         </div>
       </div>
@@ -82,11 +79,12 @@ export default function Dashboard() {
   const { environments, fetchEnvironments, loading: envLoading } = useEnvironments();
   const { providers, fetchProviders } = useAIProviders();
   const { analyses, fetchAnalyses, loading: analysesLoading } = useAnalyses();
+  const colors = useChartColors();
 
   useEffect(() => {
     fetchEnvironments();
     fetchProviders();
-    fetchAnalyses({ limit: 5 });
+    fetchAnalyses({ limit: 50 });
   }, [fetchEnvironments, fetchProviders, fetchAnalyses]);
 
   const stats = useMemo(() => {
@@ -95,7 +93,7 @@ export default function Dashboard() {
     return { completed, failed };
   }, [analyses]);
 
-  const chartData = useMemo(() => {
+  const typeData = useMemo(() => {
     const counts: Record<AnalysisType, number> = {
       performance: 0,
       availability: 0,
@@ -111,16 +109,25 @@ export default function Dashboard() {
     }));
   }, [analyses]);
 
-  const barColors = ['#8B5CF6', '#06B6D4', '#10B981', '#F59E0B'];
+  const statusData = useMemo(() => {
+    const completed = analyses.filter(a => a.status === 'completed').length;
+    const failed = analyses.filter(a => a.status === 'failed').length;
+    const running = analyses.filter(a => a.status === 'running' || a.status === 'queued').length;
+    return [
+      { name: 'Completed', value: completed, color: colors.status.completed },
+      { name: 'Failed', value: failed, color: colors.status.failed },
+      { name: 'In progress', value: running, color: colors.status.running },
+    ].filter(d => d.value > 0);
+  }, [analyses, colors]);
+
+  const recent = useMemo(() => analyses.slice(0, 5), [analyses]);
   const needsSetup = !envLoading && (environments.length === 0 || providers.length === 0);
 
   return (
     <div className="space-y-6 animate-fadeIn">
       <div>
-        <h2 className="text-2xl font-semibold text-white">Dashboard</h2>
-        <p className="text-slate-400 text-sm mt-1">
-          Overview of your Dynatrace AI analyses
-        </p>
+        <h1 className="text-2xl font-semibold text-fg">Dashboard</h1>
+        <p className="text-fg-muted text-sm mt-1">Overview of your Dynatrace AI analyses</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -128,51 +135,45 @@ export default function Dashboard() {
           label="Environments"
           value={environments.length}
           icon={Database}
-          accent="bg-primary-500/15 text-primary-400"
+          accent="bg-accent-soft text-accent"
           loading={envLoading}
         />
-        <StatCard
-          label="AI Providers"
-          value={providers.length}
-          icon={Bot}
-          accent="bg-secondary/15 text-secondary"
-        />
+        <StatCard label="AI Providers" value={providers.length} icon={Bot} accent="bg-info/10 text-info" />
         <StatCard
           label="Completed"
           value={stats.completed}
           icon={CheckCircle2}
-          accent="bg-success/15 text-success"
+          accent="bg-success/10 text-success"
           loading={analysesLoading}
         />
         <StatCard
           label="Failed"
           value={stats.failed}
           icon={XCircle}
-          accent="bg-error/15 text-error"
+          accent="bg-error/10 text-error"
           loading={analysesLoading}
         />
       </div>
 
       {needsSetup && (
-        <Card className="border-warning/30 bg-warning/10">
+        <Card className="border-accent-ring bg-accent-soft">
           <div className="flex items-start gap-3">
-            <Inbox className="text-warning shrink-0" size={20} />
+            <Sparkles className="text-accent shrink-0" size={20} />
             <div className="flex-1">
-              <p className="text-warning font-medium">Get started</p>
-              <p className="text-slate-300 text-sm mt-1">
-                Configure at least one Dynatrace environment and one AI provider to
-                begin analyzing.
+              <p className="text-fg font-medium">Get started</p>
+              <p className="text-fg-secondary text-sm mt-1">
+                Configure at least one Dynatrace environment and one AI provider to begin analyzing.
               </p>
               <div className="flex flex-wrap gap-2 mt-3">
                 <Link
                   to="/environments"
-                  className="inline-flex items-center gap-1 text-sm bg-primary-500 hover:bg-primary-400 text-white px-3 py-1.5 rounded-lg transition-colors"
+                  className="inline-flex items-center gap-1 text-sm bg-accent hover:bg-accent-hover text-accent-fg px-3 py-1.5 rounded-lg transition-colors"
                 >
                   Add environment <ArrowRight size={14} />
                 </Link>
                 <Link
                   to="/ai-providers"
-                  className="inline-flex items-center gap-1 text-sm bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg transition-colors"
+                  className="inline-flex items-center gap-1 text-sm bg-surface border border-border hover:bg-fg/5 text-fg px-3 py-1.5 rounded-lg transition-colors"
                 >
                   Add AI provider <ArrowRight size={14} />
                 </Link>
@@ -182,106 +183,123 @@ export default function Dashboard() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card title="Analyses by type">
-          {analysesLoading ? (
-            <Skeleton className="h-64 w-full" />
-          ) : analyses.length === 0 ? (
-            <div className="h-64 flex flex-col items-center justify-center text-slate-500">
-              <BarChart3Empty />
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={256}>
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                <XAxis dataKey="type" stroke="#94a3b8" fontSize={12} tickLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={12} allowDecimals={false} tickLine={false} />
-                <Tooltip
-                  cursor={{ fill: 'rgba(148,163,184,0.08)' }}
-                  contentStyle={{
-                    background: '#1E293B',
-                    border: '1px solid #334155',
-                    borderRadius: 8,
-                    color: '#e2e8f0',
-                  }}
-                />
-                <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-                  {chartData.map((_, i) => (
-                    <Cell key={i} fill={barColors[i % barColors.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <ChartCard
+          title="Analyses by type"
+          subtitle="Distribution across analysis types"
+          className="lg:col-span-2"
+          loading={analysesLoading}
+          isEmpty={analyses.length === 0}
+        >
+          <BarChart data={typeData}>
+            <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} vertical={false} />
+            <XAxis dataKey="type" stroke={colors.axis} fontSize={12} tickLine={false} axisLine={{ stroke: colors.grid }} />
+            <YAxis stroke={colors.axis} fontSize={12} allowDecimals={false} tickLine={false} axisLine={false} />
+            <Tooltip
+              cursor={{ fill: colors.grid, opacity: 0.3 }}
+              contentStyle={{
+                background: colors.tooltipBg,
+                border: `1px solid ${colors.tooltipBorder}`,
+                borderRadius: 8,
+                color: colors.tooltipText,
+              }}
+            />
+            <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+              {typeData.map((_, i) => (
+                <Cell key={i} fill={colors.series[i % colors.series.length]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ChartCard>
 
-        <Card title="Recent analyses">
-          {analysesLoading ? (
-            <div className="space-y-2">
-              {[0, 1, 2].map(i => (
-                <Skeleton key={i} className="h-14 w-full" />
+        <ChartCard
+          title="Status overview"
+          subtitle="Recent analyses by status"
+          loading={analysesLoading}
+          isEmpty={statusData.length === 0}
+        >
+          <PieChart>
+            <Pie
+              data={statusData}
+              cx="50%"
+              cy="50%"
+              innerRadius={55}
+              outerRadius={85}
+              paddingAngle={3}
+              dataKey="value"
+              stroke="none"
+            >
+              {statusData.map((d, i) => (
+                <Cell key={i} fill={d.color} />
               ))}
-            </div>
-          ) : analyses.length === 0 ? (
-            <div className="py-10 flex flex-col items-center text-center text-slate-500">
-              <Inbox size={32} className="mb-2" />
-              <p className="text-sm">No analyses yet.</p>
-              <Link
-                to="/analyses"
-                className="mt-3 inline-flex items-center gap-1 text-sm text-primary-400 hover:text-primary-300"
-              >
-                Start your first analysis <ArrowRight size={14} />
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {analyses.map(analysis => (
-                <RecentRow key={analysis.id} analysis={analysis} />
-              ))}
-            </div>
-          )}
-        </Card>
+            </Pie>
+            <Tooltip
+              contentStyle={{
+                background: colors.tooltipBg,
+                border: `1px solid ${colors.tooltipBorder}`,
+                borderRadius: 8,
+                color: colors.tooltipText,
+              }}
+            />
+          </PieChart>
+        </ChartCard>
       </div>
-    </div>
-  );
-}
 
-function BarChart3Empty() {
-  return (
-    <div className="flex flex-col items-center">
-      <Activity size={32} className="mb-2" />
-      <p className="text-sm">No data to display yet.</p>
+      <Card title="Recent analyses">
+        {analysesLoading ? (
+          <div className="space-y-2">
+            {[0, 1, 2].map(i => (
+              <Skeleton key={i} className="h-14 w-full" />
+            ))}
+          </div>
+        ) : recent.length === 0 ? (
+          <div className="py-8 flex flex-col items-center text-center text-fg-muted">
+            <Activity size={28} className="mb-2 opacity-60" />
+            <p className="text-sm">No analyses yet.</p>
+            <Link
+              to="/analyses"
+              className="mt-3 inline-flex items-center gap-1 text-sm text-accent hover:text-accent-hover"
+            >
+              Start your first analysis <ArrowRight size={14} />
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {recent.map(analysis => (
+              <RecentRow key={analysis.id} analysis={analysis} />
+            ))}
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
 
 function RecentRow({ analysis }: { analysis: Analysis }) {
   const Icon = typeIcon[analysis.analysis_type] ?? Activity;
-  const status = statusBadge[analysis.status] ?? { variant: 'warning' as const };
+  const variant = statusVariant[analysis.status] ?? 'warning';
+  const live = analysis.status === 'running' || analysis.status === 'queued';
   return (
     <Link
       to={`/analyses/${analysis.id}`}
-      className="flex items-center justify-between p-3 bg-slate-900/60 rounded-lg hover:bg-slate-700/60 transition-colors"
+      className="flex items-center justify-between p-3 rounded-lg border border-transparent hover:border-border hover:bg-fg/[0.03] transition-colors"
     >
       <div className="flex items-center gap-3 min-w-0">
-        <div className="p-2 rounded-lg bg-slate-800 text-primary-400 shrink-0">
+        <div className="p-2 rounded-lg bg-accent-soft text-accent shrink-0">
           <Icon size={18} />
         </div>
         <div className="min-w-0">
-          <div className="font-medium text-slate-100 capitalize truncate">
+          <div className="font-medium text-fg capitalize truncate">
             {analysis.analysis_type} analysis
           </div>
-          <div className="text-xs text-slate-400">
+          <div className="text-xs text-fg-muted">
             #{analysis.id} • {new Date(analysis.created_at).toLocaleString()}
           </div>
         </div>
       </div>
-      <span className="flex items-center gap-2 shrink-0">
-        {status.pulse && (
-          <span className="h-2 w-2 rounded-full bg-secondary animate-pulse" />
-        )}
-        <Badge variant={status.variant}>{analysis.status}</Badge>
-      </span>
+      <Badge variant={variant} dot={live}>
+        {analysis.status}
+      </Badge>
     </Link>
   );
 }

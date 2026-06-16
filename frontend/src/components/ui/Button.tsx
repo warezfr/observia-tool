@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
 
-type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface ButtonProps {
@@ -13,13 +13,15 @@ interface ButtonProps {
   onClick?: () => void;
   disabled?: boolean;
   type?: 'button' | 'submit' | 'reset';
+  title?: string;
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: 'bg-primary-500 hover:bg-primary-400 text-white shadow-sm shadow-primary-500/20',
-  secondary: 'bg-slate-700 hover:bg-slate-600 text-white',
-  danger: 'bg-error hover:bg-red-600 text-white',
-  ghost: 'text-slate-300 hover:text-white hover:bg-slate-800',
+  primary: 'bg-accent hover:bg-accent-hover text-accent-fg shadow-soft',
+  secondary: 'bg-surface border border-border text-fg hover:bg-fg/5',
+  danger: 'bg-error hover:opacity-90 text-white shadow-soft',
+  ghost: 'text-fg-secondary hover:text-fg hover:bg-fg/5',
+  outline: 'border border-accent text-accent hover:bg-accent-soft',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -37,6 +39,7 @@ export default function Button({
   onClick,
   disabled = false,
   type = 'button',
+  title,
 }: ButtonProps) {
   const isDisabled = disabled || loading;
   return (
@@ -44,7 +47,8 @@ export default function Button({
       type={type}
       onClick={onClick}
       disabled={isDisabled}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 ${variantClasses[variant]} ${sizeClasses[size]} ${
+      title={title}
+      className={`inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app ${variantClasses[variant]} ${sizeClasses[size]} ${
         isDisabled ? 'opacity-50 cursor-not-allowed' : ''
       } ${className}`}
     >

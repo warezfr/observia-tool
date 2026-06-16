@@ -66,8 +66,8 @@ export default function Integrations() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Integrations</h1>
-        <p className="text-slate-400 mt-1">Connect with your favorite tools</p>
+        <h1 className="text-2xl font-semibold text-fg">Integrations</h1>
+        <p className="text-fg-muted text-sm mt-1">Connect with your favorite tools</p>
       </div>
 
       <div className="space-y-3">

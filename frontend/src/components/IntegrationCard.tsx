@@ -1,7 +1,7 @@
 import Card from './ui/Card';
 import Button from './ui/Button';
 import Badge from './ui/Badge';
-import { Settings, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Settings, Trash2 } from 'lucide-react';
 
 interface IntegrationCardProps {
   name: string;
@@ -27,23 +27,23 @@ export default function IntegrationCard({
   };
 
   return (
-    <Card className="flex items-start justify-between">
+    <Card bodyClassName="p-4 flex items-start justify-between gap-4">
       <div className="flex gap-4">
-        <div className="text-3xl">{icon}</div>
+        <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-fg/5 text-2xl">{icon}</div>
         <div>
-          <h3 className="font-semibold">{name}</h3>
-          <p className="text-sm text-slate-400 mt-1">{description}</p>
+          <h3 className="font-semibold text-fg">{name}</h3>
+          <p className="text-sm text-fg-muted mt-1">{description}</p>
           <div className="mt-3">{statusBadges[status]}</div>
         </div>
       </div>
-      <div className="flex gap-2">
-        <Button variant="secondary" onClick={onConfigure} className="flex items-center gap-2">
-          <Settings size={16} />
+      <div className="flex shrink-0 gap-2">
+        <Button variant="secondary" size="sm" onClick={onConfigure}>
+          <Settings size={15} />
           Configure
         </Button>
         {status === 'connected' && (
-          <Button variant="danger" onClick={onDisconnect}>
-            <Trash2 size={16} />
+          <Button variant="danger" size="sm" onClick={onDisconnect}>
+            <Trash2 size={15} />
           </Button>
         )}
       </div>

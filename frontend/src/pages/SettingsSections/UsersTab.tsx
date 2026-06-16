@@ -58,12 +58,12 @@ export default function UsersTab() {
               placeholder="user@example.com"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full px-3 py-2 rounded bg-slate-700 border border-slate-600 text-white placeholder-slate-500"
+              className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-accent-ring focus:border-accent"
             />
             <select
               value={role}
               onChange={e => setRole(e.target.value as any)}
-              className="w-full px-3 py-2 rounded bg-slate-700 border border-slate-600 text-white"
+              className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-fg focus:outline-none focus:ring-2 focus:ring-accent-ring focus:border-accent"
             >
               <option value="viewer">Viewer</option>
               <option value="editor">Editor</option>
@@ -83,10 +83,10 @@ export default function UsersTab() {
 
       <div className="space-y-2">
         {users.map(user => (
-          <Card key={user.id} className="flex items-center justify-between">
+          <Card key={user.id} bodyClassName="p-4 flex items-center justify-between">
             <div>
-              <p className="font-medium">{user.name}</p>
-              <p className="text-sm text-slate-400">{user.email}</p>
+              <p className="font-medium text-fg">{user.name}</p>
+              <p className="text-sm text-fg-muted">{user.email}</p>
               <div className="flex gap-2 mt-2">
                 <Badge variant="info">{user.role.charAt(0).toUpperCase() + user.role.slice(1)}</Badge>
                 <Badge variant="success">{user.status}</Badge>
@@ -94,7 +94,7 @@ export default function UsersTab() {
             </div>
             <button
               onClick={() => handleDelete(user.id)}
-              className="p-2 hover:bg-slate-700 rounded transition-colors text-error"
+              className="p-2 rounded-lg text-fg-muted hover:text-error hover:bg-error/10 transition-colors"
             >
               <Trash2 size={18} />
             </button>

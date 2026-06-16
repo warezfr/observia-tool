@@ -10,6 +10,17 @@
       rel="stylesheet"
     />
     <title>Observia - Dynatrace AI Analysis</title>
+    <script>
+      // Apply persisted theme before paint to avoid a flash (light is default).
+      (function () {
+        try {
+          var t = localStorage.getItem('observia-theme');
+          document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

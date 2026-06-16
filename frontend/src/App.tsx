@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { EnvironmentsProvider } from './contexts/EnvironmentsContext';
 import { AIProvidersProvider } from './contexts/AIProvidersContext';
 import { AnalysesProvider } from './contexts/AnalysesContext';
@@ -15,6 +16,7 @@ import Integrations from './pages/Integrations';
 
 export default function App() {
   return (
+    <ThemeProvider>
     <EnvironmentsProvider>
       <AIProvidersProvider>
         <AnalysesProvider>
@@ -36,5 +38,6 @@ export default function App() {
         </AnalysesProvider>
       </AIProvidersProvider>
     </EnvironmentsProvider>
+    </ThemeProvider>
   );
 }

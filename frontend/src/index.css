@@ -2,6 +2,70 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   Design tokens — RGB channels so Tailwind <alpha-value> works.
+   Light is the default theme; [data-theme="dark"] overrides.
+   ============================================================ */
+:root {
+  color-scheme: light;
+  --app: 246 247 249;
+  --surface: 255 255 255;
+  --elevated: 255 255 255;
+  --border: 231 233 238;
+
+  --fg: 11 16 32;
+  --fg-secondary: 71 84 103;
+  --fg-muted: 107 114 128;
+
+  --accent: 79 70 229;
+  --accent-hover: 67 56 202;
+  --accent-soft: 238 242 255;
+  --accent-ring: 199 210 254;
+  --accent-fg: 255 255 255;
+
+  --success: 22 163 74;
+  --warning: 217 119 6;
+  --error: 220 38 38;
+  --info: 37 99 235;
+
+  --sev-critical: 220 38 38;
+  --sev-high: 234 88 12;
+  --sev-medium: 217 119 6;
+  --sev-low: 22 163 74;
+
+  --shadow: 15 23 42;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --app: 11 14 20;
+  --surface: 17 21 29;
+  --elevated: 22 27 38;
+  --border: 31 36 48;
+
+  --fg: 230 232 238;
+  --fg-secondary: 180 188 203;
+  --fg-muted: 138 147 166;
+
+  --accent: 129 140 248;
+  --accent-hover: 165 180 252;
+  --accent-soft: 30 31 64;
+  --accent-ring: 67 56 202;
+  --accent-fg: 12 14 22;
+
+  --success: 34 197 94;
+  --warning: 245 158 11;
+  --error: 248 113 113;
+  --info: 96 165 250;
+
+  --sev-critical: 248 113 113;
+  --sev-high: 251 146 60;
+  --sev-medium: 245 158 11;
+  --sev-low: 74 222 128;
+
+  --shadow: 0 0 0;
+}
+
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;
@@ -9,21 +73,27 @@
 
   body {
     margin: 0;
-    background-color: #0f172a;
-    color: #e2e8f0;
+    background-color: rgb(var(--app));
+    color: rgb(var(--fg));
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
   code,
   pre {
     font-family: 'JetBrains Mono', monospace;
   }
+
+  * {
+    border-color: rgb(var(--border));
+  }
 }
 
 @layer utilities {
   .skeleton {
-    @apply relative overflow-hidden bg-slate-800 rounded;
+    @apply relative overflow-hidden rounded;
+    background-color: rgb(var(--border) / 0.6);
   }
   .skeleton::after {
     content: '';
@@ -31,25 +101,144 @@
     background: linear-gradient(
       90deg,
       transparent,
-      rgba(148, 163, 184, 0.12),
+      rgb(var(--fg-muted) / 0.12),
       transparent
     );
     animation: shimmer 1.5s infinite;
   }
 }
 
+/* ============================================================
+   Themed prose for Markdown rendering
+   ============================================================ */
+.prose-observia {
+  color: rgb(var(--fg-secondary));
+  font-size: 0.925rem;
+  line-height: 1.7;
+  word-break: break-word;
+}
+.prose-observia > :first-child {
+  margin-top: 0;
+}
+.prose-observia > :last-child {
+  margin-bottom: 0;
+}
+.prose-observia h1,
+.prose-observia h2,
+.prose-observia h3,
+.prose-observia h4 {
+  color: rgb(var(--fg));
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 1.4em 0 0.6em;
+}
+.prose-observia h1 {
+  font-size: 1.5rem;
+}
+.prose-observia h2 {
+  font-size: 1.25rem;
+}
+.prose-observia h3 {
+  font-size: 1.1rem;
+}
+.prose-observia h4 {
+  font-size: 1rem;
+}
+.prose-observia p {
+  margin: 0.7em 0;
+}
+.prose-observia a {
+  color: rgb(var(--accent));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prose-observia strong {
+  color: rgb(var(--fg));
+  font-weight: 600;
+}
+.prose-observia ul,
+.prose-observia ol {
+  margin: 0.7em 0;
+  padding-left: 1.4em;
+}
+.prose-observia ul {
+  list-style: disc;
+}
+.prose-observia ol {
+  list-style: decimal;
+}
+.prose-observia li {
+  margin: 0.3em 0;
+}
+.prose-observia li::marker {
+  color: rgb(var(--fg-muted));
+}
+.prose-observia blockquote {
+  border-left: 3px solid rgb(var(--accent) / 0.5);
+  padding-left: 1em;
+  margin: 0.9em 0;
+  color: rgb(var(--fg-muted));
+}
+.prose-observia code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.825em;
+  background: rgb(var(--accent-soft));
+  color: rgb(var(--accent));
+  padding: 0.12em 0.4em;
+  border-radius: 5px;
+}
+.prose-observia pre {
+  background: rgb(var(--fg) / 0.04);
+  border: 1px solid rgb(var(--border));
+  border-radius: 10px;
+  padding: 0.9em 1em;
+  overflow-x: auto;
+  margin: 0.9em 0;
+}
+[data-theme='dark'] .prose-observia pre {
+  background: rgb(0 0 0 / 0.35);
+}
+.prose-observia pre code {
+  background: transparent;
+  color: rgb(var(--fg-secondary));
+  padding: 0;
+  font-size: 0.8rem;
+}
+.prose-observia table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.9em 0;
+  font-size: 0.85rem;
+}
+.prose-observia th,
+.prose-observia td {
+  border: 1px solid rgb(var(--border));
+  padding: 0.5em 0.7em;
+  text-align: left;
+}
+.prose-observia th {
+  background: rgb(var(--fg) / 0.03);
+  color: rgb(var(--fg));
+  font-weight: 600;
+}
+.prose-observia hr {
+  border: none;
+  border-top: 1px solid rgb(var(--border));
+  margin: 1.2em 0;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 4px;
+  background: rgb(var(--fg-muted) / 0.35);
+  border-radius: 5px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: rgb(var(--fg-muted) / 0.55);
 }

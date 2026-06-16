@@ -9,22 +9,20 @@ import {
   Globe,
   Key,
   Sparkles,
+  Trash2,
   Wand2,
 } from "lucide-react";
+import Card from "../components/ui/Card";
+import Button from "../components/ui/Button";
+import Badge from "../components/ui/Badge";
+import EmptyState from "../components/ui/EmptyState";
 
 const PROVIDER_MODELS: Record<AIProviderType, string[]> = {
   openai: ["gpt-4o", "gpt-4-turbo", "gpt-4"],
-  anthropic: [
-    "claude-opus-4-8",
-    "claude-sonnet-4-6",
-    "claude-haiku-4-5-20251001",
-  ],
+  anthropic: ["claude-opus-4-8", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"],
   gemini: ["gemini-1.5-pro", "gemini-1.5-flash"],
   azure_openai: ["gpt-4o", "gpt-4-turbo"],
-  aws_bedrock: [
-    "anthropic.claude-3-5-sonnet-20241022-v2:0",
-    "amazon.titan-text-express-v1",
-  ],
+  aws_bedrock: ["anthropic.claude-3-5-sonnet-20241022-v2:0", "amazon.titan-text-express-v1"],
   ollama: ["llama3", "mistral", "mixtral"],
 };
 
@@ -38,135 +36,22 @@ type ProviderPreset = {
 };
 
 const PROVIDER_PRESETS: ProviderPreset[] = [
-  {
-    id: "openai",
-    title: "OpenAI",
-    subtitle: "api.openai.com (ou compatible)",
-    provider_type: "openai",
-    icon: Sparkles,
-    defaults: {
-      name: "OpenAI",
-      provider_type: "openai",
-      model: "gpt-4o",
-      endpoint: "https://api.openai.com/v1",
-      extra_config: {},
-      api_key: "",
-      is_default: false,
-      fallback_order: 1,
-    },
-  },
-  {
-    id: "openai-compatible",
-    title: "OpenAI compatible",
-    subtitle: "proxy / gateway / self-hosted",
-    provider_type: "openai",
-    icon: Globe,
-    defaults: {
-      name: "OpenAI compatible",
-      provider_type: "openai",
-      model: "gpt-4o",
-      endpoint: "https://your-endpoint.example.com/v1",
-      extra_config: {},
-      api_key: "",
-      is_default: false,
-      fallback_order: 1,
-    },
-  },
-  {
-    id: "anthropic",
-    title: "Anthropic",
-    subtitle: "api.anthropic.com (ou custom)",
-    provider_type: "anthropic",
-    icon: Brain,
-    defaults: {
-      name: "Anthropic",
-      provider_type: "anthropic",
-      model: "claude-sonnet-4-6",
-      endpoint: "https://api.anthropic.com",
-      extra_config: {},
-      api_key: "",
-      is_default: false,
-      fallback_order: 1,
-    },
-  },
-  {
-    id: "gemini",
-    title: "Google Gemini",
-    subtitle: "AI Studio / Vertex",
-    provider_type: "gemini",
-    icon: Wand2,
-    defaults: {
-      name: "Gemini",
-      provider_type: "gemini",
-      model: "gemini-1.5-pro",
-      extra_config: {},
-      api_key: "",
-      is_default: false,
-      fallback_order: 1,
-    },
-  },
-  {
-    id: "azure-openai",
-    title: "Azure OpenAI",
-    subtitle: "resource.openai.azure.com",
-    provider_type: "azure_openai",
-    icon: Cloud,
-    defaults: {
-      name: "Azure OpenAI",
-      provider_type: "azure_openai",
-      model: "gpt-4o",
-      endpoint: "https://<resource>.openai.azure.com",
-      extra_config: {},
-      api_key: "",
-      is_default: false,
-      fallback_order: 1,
-    },
-  },
-  {
-    id: "bedrock",
-    title: "AWS Bedrock",
-    subtitle: "Claude / Titan / etc.",
-    provider_type: "aws_bedrock",
-    icon: Database,
-    defaults: {
-      name: "AWS Bedrock",
-      provider_type: "aws_bedrock",
-      model: "anthropic.claude-3-5-sonnet-20241022-v2:0",
-      extra_config: {},
-      api_key: "",
-      is_default: false,
-      fallback_order: 1,
-    },
-  },
-  {
-    id: "ollama",
-    title: "Ollama",
-    subtitle: "local / LAN",
-    provider_type: "ollama",
-    icon: Cpu,
-    defaults: {
-      name: "Ollama",
-      provider_type: "ollama",
-      model: "llama3",
-      endpoint: "http://localhost:11434",
-      extra_config: {},
-      api_key: "",
-      is_default: false,
-      fallback_order: 1,
-    },
-  },
+  { id: "openai", title: "OpenAI", subtitle: "api.openai.com (or compatible)", provider_type: "openai", icon: Sparkles, defaults: { name: "OpenAI", provider_type: "openai", model: "gpt-4o", endpoint: "https://api.openai.com/v1", extra_config: {}, api_key: "", is_default: false, fallback_order: 1 } },
+  { id: "openai-compatible", title: "OpenAI compatible", subtitle: "proxy / gateway / self-hosted", provider_type: "openai", icon: Globe, defaults: { name: "OpenAI compatible", provider_type: "openai", model: "gpt-4o", endpoint: "https://your-endpoint.example.com/v1", extra_config: {}, api_key: "", is_default: false, fallback_order: 1 } },
+  { id: "anthropic", title: "Anthropic", subtitle: "api.anthropic.com (or custom)", provider_type: "anthropic", icon: Brain, defaults: { name: "Anthropic", provider_type: "anthropic", model: "claude-sonnet-4-6", endpoint: "https://api.anthropic.com", extra_config: {}, api_key: "", is_default: false, fallback_order: 1 } },
+  { id: "gemini", title: "Google Gemini", subtitle: "AI Studio / Vertex", provider_type: "gemini", icon: Wand2, defaults: { name: "Gemini", provider_type: "gemini", model: "gemini-1.5-pro", extra_config: {}, api_key: "", is_default: false, fallback_order: 1 } },
+  { id: "azure-openai", title: "Azure OpenAI", subtitle: "resource.openai.azure.com", provider_type: "azure_openai", icon: Cloud, defaults: { name: "Azure OpenAI", provider_type: "azure_openai", model: "gpt-4o", endpoint: "https://<resource>.openai.azure.com", extra_config: {}, api_key: "", is_default: false, fallback_order: 1 } },
+  { id: "bedrock", title: "AWS Bedrock", subtitle: "Claude / Titan / etc.", provider_type: "aws_bedrock", icon: Database, defaults: { name: "AWS Bedrock", provider_type: "aws_bedrock", model: "anthropic.claude-3-5-sonnet-20241022-v2:0", extra_config: {}, api_key: "", is_default: false, fallback_order: 1 } },
+  { id: "ollama", title: "Ollama", subtitle: "local / LAN", provider_type: "ollama", icon: Cpu, defaults: { name: "Ollama", provider_type: "ollama", model: "llama3", endpoint: "http://localhost:11434", extra_config: {}, api_key: "", is_default: false, fallback_order: 1 } },
 ];
 
+const inputClass =
+  "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-accent-ring focus:border-accent";
+
 export default function AIProviders() {
-  const {
-    providers,
-    loading,
-    fetchProviders,
-    createProvider,
-    deleteProvider,
-    detectModels,
-  } = useAIProviders();
+  const { providers, loading, fetchProviders, createProvider, deleteProvider, detectModels } = useAIProviders();
   const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<AIProviderCreate>({
     name: "",
     provider_type: "anthropic",
@@ -186,20 +71,16 @@ export default function AIProviders() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSubmitting(true);
     try {
       await createProvider(form);
       setShowForm(false);
-      setForm({
-        name: "",
-        provider_type: "anthropic",
-        model: "claude-sonnet-4-6",
-        api_key: "",
-        is_default: false,
-        fallback_order: 1,
-      });
+      setForm({ name: "", provider_type: "anthropic", model: "claude-sonnet-4-6", api_key: "", is_default: false, fallback_order: 1 });
       setDetectedModels(null);
     } catch {
       setError("Failed to save provider.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -238,14 +119,9 @@ export default function AIProviders() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">AI Providers</h2>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="bg-blue-700 hover:bg-blue-600 px-4 py-2 rounded text-sm"
-        >
-          + Add Provider
-        </button>
+      <div>
+        <h1 className="text-2xl font-semibold text-fg">AI Providers</h1>
+        <p className="text-fg-muted text-sm mt-1">Configure the models that power your analyses</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -256,16 +132,14 @@ export default function AIProviders() {
               key={p.id}
               type="button"
               onClick={() => applyPreset(p)}
-              className="text-left bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-lg p-4 flex items-start gap-3"
+              className="text-left bg-surface border border-border hover:border-accent-ring hover:shadow-soft rounded-xl p-4 flex items-start gap-3 transition-all"
             >
-              <div className="mt-0.5 h-9 w-9 rounded-md bg-gray-800 border border-gray-700 flex items-center justify-center">
-                <Icon className="h-5 w-5 text-gray-200" />
+              <div className="mt-0.5 h-9 w-9 rounded-lg bg-accent-soft text-accent flex items-center justify-center">
+                <Icon className="h-5 w-5" />
               </div>
               <div className="min-w-0">
-                <div className="font-medium truncate">{p.title}</div>
-                <div className="text-xs text-gray-500 truncate">
-                  {p.subtitle}
-                </div>
+                <div className="font-medium text-fg truncate">{p.title}</div>
+                <div className="text-xs text-fg-muted truncate">{p.subtitle}</div>
               </div>
             </button>
           );
@@ -273,199 +147,159 @@ export default function AIProviders() {
       </div>
 
       {showForm && (
-        <form
-          onSubmit={handleSubmit}
-          className="bg-gray-900 border border-gray-800 rounded-lg p-4 space-y-3"
-        >
-          <input
-            required
-            placeholder="Display Name"
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
-          />
-          <select
-            value={form.provider_type}
-            onChange={(e) => {
-              const t = e.target.value as AIProviderType;
-              setDetectedModels(null);
-              setForm((f) => ({
-                ...f,
-                provider_type: t,
-                model: PROVIDER_MODELS[t][0],
-              }));
-            }}
-            className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
-          >
-            {Object.keys(PROVIDER_MODELS).map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-          <select
-            value={form.model}
-            onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}
-            className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
-          >
-            {(detectedModels ?? PROVIDER_MODELS[form.provider_type]).map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-
-          {needsEndpoint && (
-            <div className="space-y-1">
-              <label className="text-xs text-gray-400 flex items-center gap-2">
-                <Globe className="h-4 w-4" />
-                {endpointLabel}
-              </label>
-              <input
-                placeholder={
-                  form.provider_type === "openai"
-                    ? "https://api.openai.com/v1"
-                    : "https://..."
-                }
-                value={form.endpoint ?? ""}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, endpoint: e.target.value }))
-                }
-                className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
-              />
-              {form.provider_type === "openai" && (
-                <p className="text-xs text-gray-500">
-                  Pour OpenAI-compatible, mets une base qui inclut généralement{" "}
-                  <span className="font-mono">/v1</span>.
-                </p>
-              )}
-            </div>
-          )}
-
-          <label className="text-xs text-gray-400 flex items-center gap-2">
-            <Key className="h-4 w-4" />
-            API Key / Token
-          </label>
-          <input
-            type="password"
-            placeholder="API Key (leave empty for Ollama)"
-            value={form.api_key}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, api_key: e.target.value }))
-            }
-            className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
-          />
-
-          {form.provider_type === "openai" && (
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-xs text-gray-500">
-                Auto-détection via <span className="font-mono">GET /v1/models</span>.
-              </div>
-              <button
-                type="button"
-                disabled={detecting || !form.endpoint || !form.api_key}
-                onClick={async () => {
-                  setError("");
-                  setDetecting(true);
-                  setDetectedModels(null);
-                  try {
-                    const { models } = await detectModels({
-                      endpoint: form.endpoint ?? "",
-                      api_key: form.api_key ?? "",
-                    });
-                    setDetectedModels(models);
-                    if (models[0]) setForm((f) => ({ ...f, model: models[0] }));
-                  } catch (e: any) {
-                    const detail = e?.response?.data?.detail;
-                    setError(
-                      typeof detail === "string"
-                        ? detail
-                        : "Failed to detect models."
-                    );
-                  } finally {
-                    setDetecting(false);
-                  }
-                }}
-                className="bg-gray-800 hover:bg-gray-700 disabled:opacity-50 disabled:hover:bg-gray-800 border border-gray-700 rounded px-3 py-2 text-xs"
-              >
-                {detecting ? "Detecting…" : "Detect models"}
-              </button>
-            </div>
-          )}
-          <input
-            type="number"
-            placeholder="Fallback order (1 = highest priority)"
-            value={form.fallback_order}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, fallback_order: Number(e.target.value) }))
-            }
-            className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
-          />
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.is_default}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, is_default: e.target.checked }))
-              }
-            />
-            Set as default provider
-          </label>
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              className="bg-blue-700 hover:bg-blue-600 px-4 py-2 rounded text-sm"
+        <Card title="Configure provider">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <input required placeholder="Display Name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className={inputClass} />
+            <select
+              value={form.provider_type}
+              onChange={(e) => {
+                const t = e.target.value as AIProviderType;
+                setDetectedModels(null);
+                setForm((f) => ({ ...f, provider_type: t, model: PROVIDER_MODELS[t][0] }));
+              }}
+              className={inputClass}
             >
-              Save
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowForm(false)}
-              className="bg-gray-700 px-4 py-2 rounded text-sm"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
+              {Object.keys(PROVIDER_MODELS).map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+            <select value={form.model} onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))} className={inputClass}>
+              {(detectedModels ?? PROVIDER_MODELS[form.provider_type]).map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
 
-      <div className="space-y-3">
-        {providers.map((p) => (
-          <div
-            key={p.id}
-            className="bg-gray-900 border border-gray-800 rounded-lg p-4 flex items-center justify-between"
-          >
-            <div>
-              <div className="font-medium flex items-center gap-2">
-                {p.name}
-                {p.is_default && (
-                  <span className="text-xs bg-green-900 text-green-300 px-2 py-0.5 rounded">
-                    Default
-                  </span>
+            {needsEndpoint && (
+              <div className="space-y-1">
+                <label className="text-xs text-fg-muted flex items-center gap-2">
+                  <Globe className="h-4 w-4" />
+                  {endpointLabel}
+                </label>
+                <input
+                  placeholder={form.provider_type === "openai" ? "https://api.openai.com/v1" : "https://…"}
+                  value={form.endpoint ?? ""}
+                  onChange={(e) => setForm((f) => ({ ...f, endpoint: e.target.value }))}
+                  className={inputClass}
+                />
+                {form.provider_type === "openai" && (
+                  <p className="text-xs text-fg-muted">
+                    For OpenAI-compatible endpoints, use a base URL that usually includes <span className="font-mono">/v1</span>.
+                  </p>
                 )}
               </div>
-              <div className="text-sm text-gray-400">
-                {p.provider_type} / {p.model}
+            )}
+
+            <label className="text-xs text-fg-muted flex items-center gap-2">
+              <Key className="h-4 w-4" />
+              API Key / Token
+            </label>
+            <input
+              type="password"
+              placeholder="API Key (leave empty for Ollama)"
+              value={form.api_key}
+              onChange={(e) => setForm((f) => ({ ...f, api_key: e.target.value }))}
+              className={inputClass}
+            />
+
+            {form.provider_type === "openai" && (
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-xs text-fg-muted">
+                  Auto-detection via <span className="font-mono">GET /v1/models</span>.
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  loading={detecting}
+                  disabled={detecting || !form.endpoint || !form.api_key}
+                  onClick={async () => {
+                    setError("");
+                    setDetecting(true);
+                    setDetectedModels(null);
+                    try {
+                      const { models } = await detectModels({ endpoint: form.endpoint ?? "", api_key: form.api_key ?? "" });
+                      setDetectedModels(models);
+                      if (models[0]) setForm((f) => ({ ...f, model: models[0] }));
+                    } catch (e: any) {
+                      const detail = e?.response?.data?.detail;
+                      setError(typeof detail === "string" ? detail : "Failed to detect models.");
+                    } finally {
+                      setDetecting(false);
+                    }
+                  }}
+                >
+                  Detect models
+                </Button>
               </div>
-              <div className="text-xs text-gray-600">
-                Fallback order: {p.fallback_order}
-              </div>
+            )}
+            <input
+              type="number"
+              placeholder="Fallback order (1 = highest priority)"
+              value={form.fallback_order}
+              onChange={(e) => setForm((f) => ({ ...f, fallback_order: Number(e.target.value) }))}
+              className={inputClass}
+            />
+            <label className="flex items-center gap-2 text-sm text-fg-secondary cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.is_default}
+                onChange={(e) => setForm((f) => ({ ...f, is_default: e.target.checked }))}
+                className="accent-[rgb(var(--accent))]"
+              />
+              Set as default provider
+            </label>
+            {error && <p className="text-error text-sm">{error}</p>}
+            <div className="flex gap-2">
+              <Button type="submit" loading={submitting}>
+                Save
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>
+                Cancel
+              </Button>
             </div>
-            <button
-              onClick={() => deleteProvider(p.id)}
-              className="text-xs bg-red-900 hover:bg-red-800 px-3 py-1 rounded text-red-300"
-            >
-              Delete
-            </button>
-          </div>
-        ))}
-        {!loading && providers.length === 0 && (
-          <p className="text-gray-500 text-sm text-center py-8">
-            No AI providers configured. Add one to enable analysis.
-          </p>
-        )}
-      </div>
+          </form>
+        </Card>
+      )}
+
+      {!loading && providers.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={<Brain size={40} className="text-fg-muted" />}
+            title="No AI providers configured"
+            description="Pick a preset above or add a provider to enable analyses."
+          />
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-3">
+          {providers.map((p) => (
+            <Card key={p.id} bodyClassName="p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="font-medium text-fg flex items-center gap-2">
+                    {p.name}
+                    {p.is_default && <Badge variant="success">Default</Badge>}
+                  </div>
+                  <div className="text-sm text-fg-muted">
+                    {p.provider_type} / {p.model}
+                  </div>
+                  <div className="text-xs text-fg-muted mt-0.5">Fallback order: {p.fallback_order}</div>
+                </div>
+                <button
+                  onClick={() => deleteProvider(p.id)}
+                  title="Delete provider"
+                  className="p-2 rounded-lg text-fg-muted hover:text-error hover:bg-error/10 transition-colors"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

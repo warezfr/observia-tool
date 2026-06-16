@@ -1,54 +1,102 @@
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import Card from '../ui/Card';
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  Cell,
+  Pie,
+  PieChart,
+  Tooltip,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from 'recharts';
+import ChartCard from './ChartCard';
+import { useChartColors } from './chartTheme';
+import type { ChartData, ProviderUsage } from '../../services/reports-api';
 
 interface ChartsProps {
-  timelineData: any[];
-  providerData: any[];
-  statusData: any[];
+  timelineData: ChartData[];
+  providerData: ProviderUsage[];
+  statusData: { name: string; value: number }[];
 }
 
-const COLORS = ['#10B981', '#F43F5E', '#06B6D4'];
-
 export default function AnalyticsCharts({ timelineData, providerData, statusData }: ChartsProps) {
+  const colors = useChartColors();
+  const tooltip = {
+    background: colors.tooltipBg,
+    border: `1px solid ${colors.tooltipBorder}`,
+    borderRadius: 8,
+    color: colors.tooltipText,
+  };
+  const statusColors = [colors.status.completed, colors.status.failed, colors.status.running];
+  const visibleStatus = statusData.filter(d => d.value > 0);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <Card>
-        <h3 className="text-lg font-semibold mb-4">Analysis Timeline</h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={timelineData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-            <XAxis dataKey="date" stroke="#94A3B8" />
-            <YAxis stroke="#94A3B8" />
-            <Tooltip contentStyle={{ backgroundColor: '#1E293B', border: 'none' }} />
-            <Bar dataKey="count" fill="#8B5CF6" />
-          </BarChart>
-        </ResponsiveContainer>
-      </Card>
+      <ChartCard
+        title="Analyses over time"
+        subtitle="Daily analysis volume"
+        isEmpty={timelineData.length === 0}
+      >
+        <AreaChart data={timelineData}>
+          <defs>
+            <linearGradient id="timelineFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={colors.accent} stopOpacity={0.35} />
+              <stop offset="100%" stopColor={colors.accent} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} vertical={false} />
+          <XAxis dataKey="date" stroke={colors.axis} fontSize={12} tickLine={false} axisLine={{ stroke: colors.grid }} />
+          <YAxis stroke={colors.axis} fontSize={12} allowDecimals={false} tickLine={false} axisLine={false} />
+          <Tooltip contentStyle={tooltip} />
+          <Area
+            type="monotone"
+            dataKey="count"
+            stroke={colors.accent}
+            strokeWidth={2}
+            fill="url(#timelineFill)"
+          />
+        </AreaChart>
+      </ChartCard>
 
-      <Card>
-        <h3 className="text-lg font-semibold mb-4">Status Overview</h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <PieChart>
-            <Pie data={statusData} cx="50%" cy="50%" labelLine={false} label={{ fill: '#CBD5E1' }} outerRadius={80} dataKey="value">
-              {statusData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-            </Pie>
-            <Tooltip contentStyle={{ backgroundColor: '#1E293B', border: 'none' }} />
-          </PieChart>
-        </ResponsiveContainer>
-      </Card>
+      <ChartCard title="Status overview" subtitle="Outcomes in range" isEmpty={visibleStatus.length === 0}>
+        <PieChart>
+          <Pie
+            data={visibleStatus}
+            cx="50%"
+            cy="50%"
+            innerRadius={55}
+            outerRadius={85}
+            paddingAngle={3}
+            dataKey="value"
+            stroke="none"
+          >
+            {visibleStatus.map((entry, index) => (
+              <Cell
+                key={entry.name}
+                fill={statusColors[statusData.findIndex(s => s.name === entry.name)] ?? statusColors[index % statusColors.length]}
+              />
+            ))}
+          </Pie>
+          <Tooltip contentStyle={tooltip} />
+        </PieChart>
+      </ChartCard>
 
-      <Card className="lg:col-span-2">
-        <h3 className="text-lg font-semibold mb-4">Provider Usage</h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={providerData} layout="vertical">
-            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-            <XAxis type="number" stroke="#94A3B8" />
-            <YAxis dataKey="provider" type="category" stroke="#94A3B8" />
-            <Tooltip contentStyle={{ backgroundColor: '#1E293B', border: 'none' }} />
-            <Bar dataKey="count" fill="#06B6D4" />
-          </BarChart>
-        </ResponsiveContainer>
-      </Card>
+      <ChartCard
+        title="Provider usage"
+        subtitle="Analyses per AI provider"
+        className="lg:col-span-2"
+        isEmpty={providerData.length === 0}
+      >
+        <BarChart data={providerData} layout="vertical" margin={{ left: 12 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} horizontal={false} />
+          <XAxis type="number" stroke={colors.axis} fontSize={12} allowDecimals={false} tickLine={false} axisLine={{ stroke: colors.grid }} />
+          <YAxis dataKey="provider" type="category" stroke={colors.axis} fontSize={12} width={120} tickLine={false} axisLine={false} />
+          <Tooltip cursor={{ fill: colors.grid, opacity: 0.3 }} contentStyle={tooltip} />
+          <Bar dataKey="count" radius={[0, 6, 6, 0]} fill={colors.accent} barSize={22} />
+        </BarChart>
+      </ChartCard>
     </div>
   );
 }

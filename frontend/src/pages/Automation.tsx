@@ -57,8 +57,8 @@ export default function Automation() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Automation</h1>
-          <p className="text-slate-400 mt-1">Manage schedules and workflows</p>
+          <h1 className="text-2xl font-semibold text-fg">Automation</h1>
+          <p className="text-fg-muted text-sm mt-1">Manage schedules and workflows</p>
         </div>
         <Button onClick={() => setShowEditor(!showEditor)} className="flex items-center gap-2">
           <Plus size={18} />
@@ -72,30 +72,32 @@ export default function Automation() {
 
       <div className="space-y-2">
         {schedules.map(schedule => (
-          <Card key={schedule.id} className="flex items-center justify-between">
-            <div className="flex-1">
-              <p className="font-medium">{schedule.name}</p>
-              <div className="flex gap-2 mt-2">
+          <Card key={schedule.id} bodyClassName="p-4 flex items-center justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-fg">{schedule.name}</p>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
                 <Badge variant="info">{schedule.type}</Badge>
                 <Badge variant="default">{schedule.environment}</Badge>
-                <span className="text-sm text-slate-400">{schedule.cron}</span>
+                <span className="font-mono text-xs text-fg-muted">{schedule.cron}</span>
               </div>
-              <p className="text-sm text-slate-400 mt-2">Next run: {schedule.nextRun}</p>
+              <p className="text-sm text-fg-muted mt-2">Next run: {schedule.nextRun}</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex shrink-0 gap-2">
               <button
                 onClick={() => toggleStatus(schedule.id)}
-                className={`p-2 rounded transition-colors ${
+                title={schedule.status === 'active' ? 'Pause' : 'Resume'}
+                className={`p-2 rounded-lg transition-colors ${
                   schedule.status === 'active'
-                    ? 'bg-success/20 text-success hover:bg-success/30'
-                    : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                    ? 'bg-success/10 text-success hover:bg-success/20'
+                    : 'bg-fg/5 text-fg-muted hover:bg-fg/10'
                 }`}
               >
                 {schedule.status === 'active' ? <Pause size={18} /> : <Play size={18} />}
               </button>
               <button
                 onClick={() => deleteSchedule(schedule.id)}
-                className="p-2 rounded hover:bg-slate-700 transition-colors text-error"
+                title="Delete"
+                className="p-2 rounded-lg text-fg-muted hover:text-error hover:bg-error/10 transition-colors"
               >
                 <Trash2 size={18} />
               </button>
@@ -105,8 +107,8 @@ export default function Automation() {
       </div>
 
       {schedules.length === 0 && !showEditor && (
-        <Card className="text-center py-8">
-          <p className="text-slate-400">No schedules configured yet</p>
+        <Card bodyClassName="p-8 text-center">
+          <p className="text-fg-muted">No schedules configured yet</p>
           <Button variant="primary" onClick={() => setShowEditor(true)} className="mt-4">
             Create your first schedule
           </Button>
