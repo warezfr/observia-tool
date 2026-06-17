@@ -29,6 +29,7 @@ interface DataTableProps<T> {
   onRowClick?: (row: T) => void;
   emptyState?: ReactNode;
   initialSort?: { key: string; dir: 'asc' | 'desc' };
+  selectedRowKey?: string | number | null;
   className?: string;
 }
 
@@ -43,6 +44,7 @@ export default function DataTable<T>({
   onRowClick,
   emptyState,
   initialSort = undefined,
+  selectedRowKey = null,
   className = '',
 }: DataTableProps<T>) {
   const [query, setQuery] = useState('');
@@ -179,11 +181,19 @@ export default function DataTable<T>({
           </thead>
           <tbody>
             {processed.map(row => (
+              (() => {
+                const key = rowKey(row);
+                const selected = selectedRowKey != null && key === selectedRowKey;
+                return (
               <tr
-                key={rowKey(row)}
+                key={key}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
                 className={`border-b border-border last:border-0 transition-colors ${
-                  onRowClick ? 'cursor-pointer hover:bg-fg/[0.03]' : ''
+                  onRowClick
+                    ? selected
+                      ? 'cursor-pointer bg-accent-soft hover:bg-accent-soft'
+                      : 'cursor-pointer hover:bg-fg/[0.03]'
+                    : ''
                 }`}
               >
                 {columns.map(c => (
@@ -192,6 +202,8 @@ export default function DataTable<T>({
                   </td>
                 ))}
               </tr>
+                );
+              })()
             ))}
             {processed.length === 0 && (
               <tr>

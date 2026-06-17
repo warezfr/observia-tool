@@ -47,13 +47,40 @@ export interface AIProviderCreate {
   fallback_order: number;
 }
 
+export interface AnalysisCompleteness {
+  complete: boolean;
+  missing: string[];
+  satisfied: string[];
+  required: string[];
+}
+
+export interface AnalysisResult {
+  summary: string;
+  raw_data: unknown[];
+  completeness?: AnalysisCompleteness;
+}
+
+export interface EnvironmentHealthCard {
+  environment_id: number;
+  environment_name: string;
+  status: "healthy" | "warning" | "critical" | "unknown";
+  last_analysis_type: AnalysisType | null;
+  last_analysis_id: number | null;
+  last_analysis_at: string | null;
+  completeness_pct: number | null;
+}
+
+export interface EnvironmentHealthOverview {
+  environments: EnvironmentHealthCard[];
+}
+
 export interface Analysis {
   id: number;
   environment_id: number;
   ai_provider_id: number;
   analysis_type: AnalysisType;
   status: AnalysisStatus;
-  result: { summary: string; raw_data: unknown[] } | null;
+  result: AnalysisResult | null;
   reasoning_steps: { type: string; content: string; tool?: string }[];
   error_message: string | null;
   created_at: string;

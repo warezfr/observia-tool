@@ -21,6 +21,7 @@ import Badge from '../components/ui/Badge';
 import Markdown from '../components/ui/Markdown';
 import JsonViewer from '../components/ui/JsonViewer';
 import ReasoningTimeline from '../components/ReasoningTimeline';
+import CompletenessBanner from '../components/CompletenessBanner';
 import { Spinner } from '../components/ui/EmptyState';
 import { severityVariant, statusVariant, titleCase } from '../lib/status';
 import type { Analysis, Recommendation, RecommendationStatus } from '../types';
@@ -232,6 +233,8 @@ export default function AnalysisDetail() {
           </div>
         </Card>
       )}
+
+      <CompletenessBanner completeness={analysis.result?.completeness} />
 
       {analysis.result?.summary && (
         <Card title="Result summary">

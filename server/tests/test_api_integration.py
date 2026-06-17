@@ -197,3 +197,132 @@ async def test_report_persistence(client):
 
     history = await client.get("/api/v1/reports/", params={"analysis_id": analysis["id"]})
     assert any(r["id"] == report_id for r in history.json())
+
+
+@pytest_asyncio.fixture
+async def client_with_sessions():
+    """Like ``client`` but also exposes the session maker for direct DB seeding."""
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    session_maker = async_sessionmaker(engine, expire_on_commit=False)
+
+    async def _override_get_db():
+        async with session_maker() as session:
+            yield session
+
+    app.dependency_overrides[get_db] = _override_get_db
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac, session_maker
+    app.dependency_overrides.clear()
+    await engine.dispose()
+
+
+def _metric_result(metric_id: str, values: list[float], *, complete: bool = True) -> dict:
+    return {
+        "raw_data": [
+            {
+                "tool": "query_metrics",
+                "result": {
+                    "result": [
+                        {"metricId": metric_id, "data": [{"values": values}]},
+                    ]
+                },
+            }
+        ],
+        "completeness": {
+            "complete": complete,
+            "required": ["query_metrics", "list_problems"],
+            "satisfied": ["query_metrics", "list_problems"] if complete else ["query_metrics"],
+        },
+    }
+
+
+@pytest.mark.asyncio
+async def test_analyses_health_overview_and_compare_batch(client_with_sessions):
+    client, session_maker = client_with_sessions
+    from sqlalchemy import update
+
+    from app.db.database import AnalysisDB
+    from app.models.analysis import AnalysisStatus
+
+    env1 = (await client.post(
+        "/api/v1/environments/",
+        json={"name": "E1", "url": "https://a.live.dynatrace.com", "env_type": "managed", "token": "t"},
+    )).json()
+    env2 = (await client.post(
+        "/api/v1/environments/",
+        json={"name": "E2", "url": "https://b.live.dynatrace.com", "env_type": "managed", "token": "t"},
+    )).json()
+    prov = (await client.post(
+        "/api/v1/ai-providers/",
+        json={"name": "P", "provider_type": "openai", "model": "gpt-4o", "api_key": "k"},
+    )).json()
+    base = {
+        "ai_provider_id": prov["id"],
+        "analysis_type": "performance",
+        "time_range_hours": 24,
+    }
+    older = (await client.post(
+        "/api/v1/analyses/",
+        json={**base, "environment_id": env1["id"]},
+    )).json()
+    newer = (await client.post(
+        "/api/v1/analyses/",
+        json={**base, "environment_id": env1["id"]},
+    )).json()
+    other_env = (await client.post(
+        "/api/v1/analyses/",
+        json={**base, "environment_id": env2["id"]},
+    )).json()
+
+    async with session_maker() as session:
+        await session.execute(
+            update(AnalysisDB)
+            .where(AnalysisDB.id == newer["id"])
+            .values(
+                status=AnalysisStatus.COMPLETED.value,
+                result=_metric_result("builtin:service.response.time", [100.0, 120.0], complete=False),
+            )
+        )
+        await session.execute(
+            update(AnalysisDB)
+            .where(AnalysisDB.id == other_env["id"])
+            .values(
+                status=AnalysisStatus.COMPLETED.value,
+                result=_metric_result("builtin:service.response.time", [50.0, 60.0]),
+            )
+        )
+        await session.commit()
+
+    health = await client.get("/api/v1/analyses/health-overview")
+    assert health.status_code == 200
+    env_rows = {row["environment_id"]: row for row in health.json()["environments"]}
+    assert len(env_rows) == 2
+    assert env_rows[env1["id"]]["last_analysis_id"] == newer["id"]
+    assert env_rows[env1["id"]]["completeness_pct"] == 50
+    assert env_rows[env2["id"]]["completeness_pct"] == 100
+
+    too_few = await client.post("/api/v1/analyses/compare-batch", json={"ids": [newer["id"]]})
+    assert too_few.status_code == 422
+
+    compare = await client.post(
+        "/api/v1/analyses/compare-batch",
+        json={"ids": [newer["id"], other_env["id"]]},
+    )
+    assert compare.status_code == 200
+    payload = compare.json()
+    assert len(payload["analyses"]) == 2
+    assert payload["analyses"][0]["id"] == newer["id"]
+    metric = next(m for m in payload["metrics"] if m["metric"] == "builtin:service.response.time")
+    assert len(metric["values"]) == 2
+    by_id = {v["analysis_id"]: v for v in metric["values"]}
+    assert by_id[newer["id"]]["avg"] == 110.0
+    assert by_id[other_env["id"]]["latest"] == 60.0
+
+    missing = await client.post(
+        "/api/v1/analyses/compare-batch",
+        json={"ids": [newer["id"], 99999]},
+    )
+    assert missing.status_code == 404

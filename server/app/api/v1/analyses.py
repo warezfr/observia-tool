@@ -3,15 +3,50 @@ import json
 
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.database import AsyncSessionLocal
-
-from app.db.database import get_db
-from app.db.repositories import AnalysisRepository, AuditLogRepository, RecommendationRepository
+from app.db.database import AsyncSessionLocal, get_db, AnalysisDB
+from app.db.repositories import AnalysisRepository, AuditLogRepository, RecommendationRepository, EnvironmentRepository
 from app.models.analysis import AnalysisCreate, AnalysisResponse, AnalysisStatus
 
 router = APIRouter()
+
+
+class CompareBatchRequest(BaseModel):
+    ids: list[int] = Field(..., min_length=2, max_length=5)
+
+
+def _completeness_score(result: dict | None) -> int | None:
+    if not isinstance(result, dict):
+        return None
+    completeness = result.get("completeness")
+    if not isinstance(completeness, dict):
+        return None
+    if completeness.get("complete"):
+        return 100
+    required = completeness.get("required") or []
+    satisfied = completeness.get("satisfied") or []
+    if not required:
+        return 100 if completeness.get("complete") else 0
+    return round(100 * len(satisfied) / len(required))
+
+
+def _derive_health_status(analysis: AnalysisDB | None) -> str:
+    if not analysis:
+        return "unknown"
+    status = analysis.status
+    if status == "failed":
+        return "critical"
+    if status in ("partial", "queued", "running"):
+        return "warning"
+    if status == "completed":
+        result = analysis.result if isinstance(analysis.result, dict) else {}
+        completeness = result.get("completeness")
+        if isinstance(completeness, dict) and not completeness.get("complete", True):
+            return "warning"
+        return "healthy"
+    return "unknown"
 
 
 @router.post("/", response_model=AnalysisResponse, status_code=status.HTTP_201_CREATED)
@@ -42,6 +77,71 @@ async def list_analyses(
 ):
     repo = AnalysisRepository(db)
     return await repo.get_all(limit=limit, status=status, analysis_type=type)
+
+
+@router.get("/health-overview")
+async def health_overview(db: AsyncSession = Depends(get_db)):
+    """Per-environment health snapshot from the latest analysis."""
+    env_repo = EnvironmentRepository(db)
+    analysis_repo = AnalysisRepository(db)
+    latest_by_env = {a.environment_id: a for a in await analysis_repo.get_latest_per_environment()}
+
+    environments = []
+    for env in await env_repo.get_all():
+        latest = latest_by_env.get(env.id)
+        environments.append({
+            "environment_id": env.id,
+            "environment_name": env.name,
+            "status": _derive_health_status(latest),
+            "last_analysis_type": latest.analysis_type if latest else None,
+            "last_analysis_id": latest.id if latest else None,
+            "last_analysis_at": latest.created_at.isoformat() if latest and latest.created_at else None,
+            "completeness_pct": _completeness_score(latest.result if latest else None),
+        })
+
+    return {"environments": environments}
+
+
+@router.post("/compare-batch")
+async def compare_analyses_batch(
+    body: CompareBatchRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Compare metric signals across 2–5 analyses."""
+    from app.api.v1.reports import _extract_metric_signals
+
+    repo = AnalysisRepository(db)
+    analyses = []
+    for analysis_id in body.ids:
+        analysis = await repo.get_by_id(analysis_id)
+        if not analysis:
+            raise HTTPException(status_code=404, detail=f"Analysis {analysis_id} not found")
+        analyses.append(analysis)
+
+    metric_values: dict[str, list[dict]] = {}
+    for analysis in analyses:
+        for signal in _extract_metric_signals(analysis):
+            metric_values.setdefault(signal["metric"], []).append({
+                "analysis_id": analysis.id,
+                "avg": signal["avg"],
+                "latest": signal["latest"],
+            })
+
+    return {
+        "analyses": [
+            {
+                "id": analysis.id,
+                "environment_id": analysis.environment_id,
+                "type": analysis.analysis_type,
+                "created_at": analysis.created_at.isoformat() if analysis.created_at else None,
+            }
+            for analysis in analyses
+        ],
+        "metrics": [
+            {"metric": metric, "values": values}
+            for metric, values in sorted(metric_values.items())
+        ],
+    }
 
 
 @router.get("/{analysis_id}/stream")

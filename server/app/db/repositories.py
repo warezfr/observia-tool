@@ -206,6 +206,35 @@ class AnalysisRepository:
         await self.db.commit()
         return result.rowcount > 0
 
+    async def get_latest_per_environment(self) -> list[AnalysisDB]:
+        """Return the most recent analysis per environment (by created_at)."""
+        latest_subq = (
+            select(
+                AnalysisDB.environment_id,
+                func.max(AnalysisDB.created_at).label("max_created_at"),
+            )
+            .group_by(AnalysisDB.environment_id)
+            .subquery()
+        )
+        query = (
+            select(AnalysisDB)
+            .join(
+                latest_subq,
+                (AnalysisDB.environment_id == latest_subq.c.environment_id)
+                & (AnalysisDB.created_at == latest_subq.c.max_created_at),
+            )
+            .order_by(AnalysisDB.environment_id)
+        )
+        result = await self.db.execute(query)
+        rows = list(result.scalars().all())
+        # If created_at ties, keep the row with the highest id per environment.
+        latest: dict[int, AnalysisDB] = {}
+        for row in rows:
+            prev = latest.get(row.environment_id)
+            if prev is None or row.id > prev.id:
+                latest[row.environment_id] = row
+        return list(latest.values())
+
     async def get_previous(self, analysis: AnalysisDB) -> AnalysisDB | None:
         """Find the most recent prior analysis of the same environment and type."""
         query = (

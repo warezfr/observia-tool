@@ -6,6 +6,7 @@ import type {
   AIProviderCreate,
   Analysis,
   AnalysisCreate,
+  EnvironmentHealthOverview,
   Recommendation,
   RecommendationSeverity
 } from '../types';
@@ -68,6 +69,8 @@ export const analysesApi = {
   get: (id: number) => client.get<Analysis>(`/analyses/${id}`).then(r => r.data),
   create: (data: AnalysisCreate) => client.post<Analysis>('/analyses/', data).then(r => r.data),
   delete: (id: number) => client.delete(`/analyses/${id}`),
+  healthOverview: () =>
+    client.get<EnvironmentHealthOverview>('/analyses/health-overview').then(r => r.data),
 };
 
 export const recommendationsApi = {

@@ -9,23 +9,31 @@ import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import DataTable, { type Column, type FilterDef } from '../components/ui/DataTable';
 import EmptyState from '../components/ui/EmptyState';
+import AnalysisReportPreview from '../components/AnalysisReportPreview';
 import { statusVariant, titleCase } from '../lib/status';
 import type { Analysis, AnalysisCreate, AnalysisType, AnalysisStatus } from '../types';
 
 const STATUS_OPTIONS: AnalysisStatus[] = ['queued', 'running', 'completed', 'failed'];
 const TYPE_OPTIONS: AnalysisType[] = ['performance', 'availability', 'security', 'cost', 'reliability'];
 
+const ANALYSIS_PRESETS: { label: string; analysis_type: AnalysisType; time_range_hours: number }[] = [
+  { label: 'Performance 24h', analysis_type: 'performance', time_range_hours: 24 },
+  { label: 'Reliability 24h', analysis_type: 'reliability', time_range_hours: 24 },
+  { label: 'Security 7d', analysis_type: 'security', time_range_hours: 168 },
+];
+
 const inputClass =
   'w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-accent-ring focus:border-accent';
 
 export default function Analyses() {
-  const { analyses, loading, fetchAnalyses, createAnalysis, deleteAnalysis } = useAnalyses();
+  const { analyses, loading, fetchAnalyses, createAnalysis, deleteAnalysis, getAnalysis } = useAnalyses();
   const { environments, fetchEnvironments } = useEnvironments();
   const { providers, fetchProviders } = useAIProviders();
   const navigate = useNavigate();
 
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [form, setForm] = useState<AnalysisCreate>({
     environment_id: 0,
     ai_provider_id: 0,
@@ -166,6 +174,32 @@ export default function Analyses() {
       {showForm && (
         <Card title="New analysis">
           <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2">
+              <label className="block text-xs text-fg-muted mb-1.5">Quick presets</label>
+              <div className="flex flex-wrap gap-2">
+                {ANALYSIS_PRESETS.map((preset) => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() =>
+                      setForm((f) => ({
+                        ...f,
+                        analysis_type: preset.analysis_type,
+                        time_range_hours: preset.time_range_hours,
+                      }))
+                    }
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                      form.analysis_type === preset.analysis_type &&
+                      form.time_range_hours === preset.time_range_hours
+                        ? 'border-accent bg-accent-soft text-accent'
+                        : 'border-border bg-surface text-fg-secondary hover:border-accent-ring/50 hover:text-fg'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div>
               <label className="block text-xs text-fg-muted mb-1">Environment</label>
               <select
@@ -235,26 +269,51 @@ export default function Analyses() {
         </Card>
       )}
 
-      <DataTable
-        data={analyses}
-        columns={columns}
-        filters={filters}
-        rowKey={a => a.id}
-        searchPlaceholder="Search analyses…"
-        onRowClick={a => navigate(`/analyses/${a.id}`)}
-        initialSort={{ key: 'created_at', dir: 'desc' }}
-        emptyState={
-          loading ? (
-            <span className="text-sm text-fg-muted">Loading…</span>
-          ) : (
-            <EmptyState
-              title="No analyses found"
-              description="Create a new analysis to start generating AI-powered insights."
-              action={<Button onClick={() => setShowForm(true)}>New Analysis</Button>}
-            />
-          )
-        }
-      />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-3">
+          <DataTable
+            data={analyses}
+            columns={columns}
+            filters={filters}
+            rowKey={a => a.id}
+            selectedRowKey={selectedId}
+            searchPlaceholder="Search analyses…"
+            onRowClick={a => setSelectedId(a.id)}
+            initialSort={{ key: 'created_at', dir: 'desc' }}
+            emptyState={
+              loading ? (
+                <span className="text-sm text-fg-muted">Loading…</span>
+              ) : (
+                <EmptyState
+                  title="No analyses found"
+                  description="Create a new analysis to start generating AI-powered insights."
+                  action={<Button onClick={() => setShowForm(true)}>New Analysis</Button>}
+                />
+              )
+            }
+          />
+        </div>
+
+        <aside className="lg:col-span-2">
+          <div className="lg:sticky lg:top-[84px]">
+            {!selectedId ? (
+              <Card title="Preview">
+                <EmptyState
+                  title="Select an analysis"
+                  description="Click a row to preview the full report here without leaving the page."
+                />
+              </Card>
+            ) : (
+              <AnalysisReportPreview
+                analysisId={selectedId}
+                getAnalysis={getAnalysis}
+                onClose={() => setSelectedId(null)}
+                onOpenDetail={() => navigate(`/analyses/${selectedId}`)}
+              />
+            )}
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

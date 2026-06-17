@@ -32,6 +32,7 @@ import { useAnalyses } from '../contexts/AnalysesContext';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Skeleton from '../components/ui/Skeleton';
+import EnvironmentHealthPanel from '../components/EnvironmentHealthPanel';
 import ChartCard from '../components/Charts/ChartCard';
 import { useChartColors } from '../components/Charts/chartTheme';
 import { statusVariant } from '../lib/status';
@@ -190,6 +191,8 @@ export default function Dashboard() {
           loading={analysesLoading}
         />
       </div>
+
+      <EnvironmentHealthPanel />
 
       {needsSetup && (
         <Card className="border-accent-ring bg-accent-soft">
